@@ -14,10 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -32,6 +28,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.MessageCircle
+import com.composables.icons.lucide.Settings
+import com.composables.icons.lucide.X
 
 @Composable
 fun FloatingWindowView(
@@ -63,7 +63,7 @@ fun FloatingWindowView(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Chat,
+                    imageVector = Lucide.MessageCircle,
                     contentDescription = "Assistant Avatar",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(24.dp)
@@ -86,7 +86,7 @@ fun FloatingWindowView(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Chat,
+                            imageVector = Lucide.MessageCircle,
                             contentDescription = "Chat",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -98,7 +98,7 @@ fun FloatingWindowView(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = Lucide.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurface
                         )
@@ -110,7 +110,7 @@ fun FloatingWindowView(
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Close,
+                            imageVector = Lucide.X,
                             contentDescription = "Close",
                             tint = MaterialTheme.colorScheme.error
                         )
