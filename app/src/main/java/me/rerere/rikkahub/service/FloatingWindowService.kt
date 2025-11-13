@@ -90,7 +90,6 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         val intent = Intent(this, RouteActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("destination", destination)
-            putExtra("skipFloating", true)
         }
         startActivity(intent)
     }

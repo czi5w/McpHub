@@ -107,15 +107,6 @@ class RouteActivity : ComponentActivity() {
         disableNavigationBarContrast()
         super.onCreate(savedInstanceState)
         
-        // Check if launched from floating window (has destination)
-        val destination = intent?.getStringExtra("destination")
-        
-        // If not launched from floating window, start floating window mode
-        if (destination == null && !intent.hasExtra("skipFloating")) {
-            checkAndStartFloatingWindow()
-            return
-        }
-        
         setContent {
             val navStack = rememberNavController()
             this.navStack = navStack
