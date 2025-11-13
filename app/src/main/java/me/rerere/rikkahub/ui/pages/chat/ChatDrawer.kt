@@ -1,6 +1,6 @@
 import android.content.Intent
 import android.os.Build
-import android.provider.Settings
+import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -246,7 +246,7 @@ fun ChatDrawerContent(
                     onClick = {
                         // Check permission and start floating window service
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            if (Settings.canDrawOverlays(context)) {
+                            if (AndroidSettings.canDrawOverlays(context)) {
                                 val intent = Intent(context, FloatingWindowService::class.java)
                                 ContextCompat.startForegroundService(context, intent)
                                 // Close the activity
@@ -254,7 +254,7 @@ fun ChatDrawerContent(
                             } else {
                                 // Request permission
                                 val intent = Intent(
-                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                     android.net.Uri.parse("package:${context.packageName}")
                                 )
                                 context.startActivity(intent)
