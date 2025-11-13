@@ -7,33 +7,24 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import me.rerere.rikkahub.RouteActivity
-import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingWindowView
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
-import org.koin.android.ext.android.inject
 
 class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
-    private val settingsStore by inject<SettingsStore>()
     
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -80,8 +71,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeLifecycleOwner(this@FloatingWindowService)
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setContent {
-                val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
-                RikkahubTheme(settings = settings) {
+                RikkahubTheme {
                     FloatingWindowView(
                         onClose = { stopSelf() },
                         onChatClick = { openMainApp("chat") },
