@@ -1,3 +1,5 @@
+package me.rerere.rikkahub.ui.pages.chat
+
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings as AndroidSettings
