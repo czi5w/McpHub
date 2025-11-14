@@ -34,6 +34,7 @@ import com.composables.icons.lucide.Settings
 import com.composables.icons.lucide.X
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.flow.collectLatest
+import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.rememberChatInputState
@@ -175,6 +176,43 @@ fun FloatingChatDialog(
                             vm.handleMessageSend(inputState.getContents())
                         }
                         inputState.clearInput()
+                    },
+                    onLongSendClick = {
+                        if (inputState.isEditing()) {
+                            vm.handleMessageEdit(
+                                parts = inputState.getContents(),
+                                messageId = inputState.editingMessage!!
+                            )
+                        } else {
+                            vm.handleMessageSend(content = inputState.getContents(), answer = false)
+                        }
+                        inputState.clearInput()
+                    },
+                    onUpdateChatModel = { model ->
+                        vm.setChatModel(assistant = setting.getCurrentAssistant(), model = model)
+                    },
+                    onUpdateAssistant = { assistant ->
+                        vm.updateSettings(
+                            setting.copy(
+                                assistants = setting.assistants.map { a ->
+                                    if (a.id == assistant.id) {
+                                        assistant
+                                    } else {
+                                        a
+                                    }
+                                }
+                            )
+                        )
+                    },
+                    onUpdateSearchService = { index ->
+                        vm.updateSettings(
+                            setting.copy(
+                                searchServiceSelected = index
+                            )
+                        )
+                    },
+                    onClearContext = {
+                        vm.handleMessageTruncate()
                     }
                 )
             }
