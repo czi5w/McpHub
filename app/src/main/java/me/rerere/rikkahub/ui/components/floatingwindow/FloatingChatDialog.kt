@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.ui.components.floatingwindow
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -74,7 +76,7 @@ fun FloatingChatDialog(
     val listState = rememberLazyListState()
 
     Card(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -118,33 +120,39 @@ fun FloatingChatDialog(
                 )
             )
 
-            // Chat list
-            ChatList(
-                innerPadding = PaddingValues(0.dp),
-                conversation = conversation,
-                state = listState,
-                loading = loadingJob != null,
-                previewMode = false,
-                settings = setting,
-                onRegenerate = { message ->
-                    vm.regenerateAtMessage(message)
-                },
-                onDelete = { message ->
-                    vm.deleteMessage(message)
-                },
-                onEdit = { message ->
-                    inputState.editingMessage = message.id
-                    inputState.setContents(message.parts)
-                },
-                onForkMessage = {},
-                onUpdateMessage = {},
-                onClickSuggestion = { suggestion ->
-                    inputState.setMessageText(suggestion)
-                },
-                onTranslate = null,
-                onClearTranslation = {},
-                onJumpToMessage = {}
-            )
+            // Chat list - with weight to fill available space
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                ChatList(
+                    innerPadding = PaddingValues(0.dp),
+                    conversation = conversation,
+                    state = listState,
+                    loading = loadingJob != null,
+                    previewMode = false,
+                    settings = setting,
+                    onRegenerate = { message ->
+                        vm.regenerateAtMessage(message)
+                    },
+                    onDelete = { message ->
+                        vm.deleteMessage(message)
+                    },
+                    onEdit = { message ->
+                        inputState.editingMessage = message.id
+                        inputState.setContents(message.parts)
+                    },
+                    onForkMessage = {},
+                    onUpdateMessage = {},
+                    onClickSuggestion = { suggestion ->
+                        inputState.setMessageText(suggestion)
+                    },
+                    onTranslate = null,
+                    onClearTranslation = {},
+                    onJumpToMessage = {}
+                )
+            }
 
             // Chat input
             Spacer(modifier = Modifier.height(8.dp))

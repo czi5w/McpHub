@@ -155,17 +155,19 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 val params = view.layoutParams as WindowManager.LayoutParams
                 
                 if (expanded) {
-                    // Expand to show chat dialog
+                    // Expand to show chat dialog - allow focus for input field
                     val displayMetrics = resources.displayMetrics
                     params.width = (displayMetrics.widthPixels * 0.9).toInt()
                     params.height = (displayMetrics.heightPixels * 0.8).toInt()
                     params.gravity = Gravity.CENTER
                     params.x = 0
                     params.y = 0
+                    // Remove FLAG_NOT_FOCUSABLE to allow keyboard input
                     params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                                   WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                                   WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
+                                   WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 } else {
-                    // Collapse to button
+                    // Collapse to button - prevent stealing focus
                     params.width = WindowManager.LayoutParams.WRAP_CONTENT
                     params.height = WindowManager.LayoutParams.WRAP_CONTENT
                     params.gravity = Gravity.BOTTOM or Gravity.START
