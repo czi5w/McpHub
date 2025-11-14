@@ -88,10 +88,30 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     
     private fun openMainApp(destination: String) {
         val intent = Intent(this, RouteActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
             putExtra("destination", destination)
+            putExtra("isFloatingWindow", true)
         }
-        startActivity(intent)
+        
+        // Create ActivityOptions for a smaller, floating-style window
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val displayMetrics = resources.displayMetrics
+            val width = (displayMetrics.widthPixels * 0.85).toInt() // 85% of screen width
+            val height = (displayMetrics.heightPixels * 0.75).toInt() // 75% of screen height
+            
+            val options = android.app.ActivityOptions.makeBasic()
+            options.setLaunchBounds(
+                android.graphics.Rect(
+                    (displayMetrics.widthPixels - width) / 2, // Center horizontally
+                    (displayMetrics.heightPixels - height) / 2, // Center vertically
+                    (displayMetrics.widthPixels + width) / 2,
+                    (displayMetrics.heightPixels + height) / 2
+                )
+            )
+            startActivity(intent, options.toBundle())
+        } else {
+            startActivity(intent)
+        }
     }
 
     override fun onDestroy() {
