@@ -16,8 +16,11 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -39,11 +42,12 @@ import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
 
-class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner {
+class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private val _viewModelStore = ViewModelStore()
     private var showChatDialog by mutableStateOf(false)
     private var conversationId by mutableStateOf(Uuid.random())
     
@@ -55,6 +59,9 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateRegistryController.savedStateRegistry
+    
+    override val viewModelStore: ViewModelStore
+        get() = _viewModelStore
 
     override fun onCreate() {
         super.onCreate()
@@ -94,6 +101,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         floatingView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@FloatingWindowService)
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
+            setViewTreeViewModelStoreOwner(this@FloatingWindowService)
             setContent {
                 val toastState = rememberToasterState()
                 val tts = rememberCustomTtsState()
@@ -197,6 +205,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         }
         floatingView = null
         windowManager = null
+        _viewModelStore.clear()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
