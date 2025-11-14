@@ -62,9 +62,9 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 100
-            y = 100
+            gravity = Gravity.BOTTOM or Gravity.START
+            x = 50
+            y = 50
         }
 
         floatingView = ComposeView(this).apply {
