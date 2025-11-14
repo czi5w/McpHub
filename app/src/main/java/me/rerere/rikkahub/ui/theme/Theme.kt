@@ -73,16 +73,13 @@ fun RikkahubTheme(
 
     // 更新状态栏图标颜色
     val view = LocalView.current
-    if (!view.isInEditMode) {
+    if (!view.isInEditMode && view.context is Activity) {
         SideEffect {
-            // Only update status bar in Activity context
-            val activity = view.context as? Activity
-            if (activity != null) {
-                val window = activity.window
-                WindowCompat.getInsetsController(window, view).apply {
-                    isAppearanceLightStatusBars = !darkTheme
-                    isAppearanceLightNavigationBars = !darkTheme
-                }
+            val activity = view.context as Activity
+            val window = activity.window
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
             }
         }
     }
