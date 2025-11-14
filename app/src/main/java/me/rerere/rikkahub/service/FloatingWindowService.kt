@@ -7,22 +7,36 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.dokar.sonner.Toaster
+import com.dokar.sonner.rememberToasterState
+import me.rerere.highlight.Highlighter
+import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.RouteActivity
+import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingChatDialog
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingWindowView
+import me.rerere.rikkahub.ui.context.LocalSettings
+import me.rerere.rikkahub.ui.context.LocalToaster
+import me.rerere.rikkahub.ui.hooks.rememberCustomTtsState
+import me.rerere.rikkahub.ui.context.LocalTTSState
+import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
+import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
 
 class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner {
@@ -32,6 +46,9 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private var showChatDialog by mutableStateOf(false)
     private var conversationId by mutableStateOf(Uuid.random())
+    
+    private val highlighter by inject<Highlighter>()
+    private val settingsStore by inject<SettingsStore>()
     
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -78,31 +95,50 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeLifecycleOwner(this@FloatingWindowService)
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setContent {
+                val toastState = rememberToasterState()
+                val tts = rememberCustomTtsState()
+                val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
+                
                 RikkahubTheme {
-                    if (showChatDialog) {
-                        FloatingChatDialog(
-                            conversationId = conversationId,
-                            onClose = { 
-                                showChatDialog = false
-                                updateWindowSize(false)
-                            },
-                            onSettingsClick = { 
-                                openMainApp("settings")
-                                stopSelf()
-                            }
+                    CompositionLocalProvider(
+                        LocalSettings provides settings,
+                        LocalHighlighter provides highlighter,
+                        LocalToaster provides toastState,
+                        LocalTTSState provides tts,
+                    ) {
+                        Toaster(
+                            state = toastState,
+                            darkTheme = LocalDarkMode.current,
+                            richColors = true,
+                            alignment = Alignment.TopCenter,
+                            showCloseButton = true,
                         )
-                    } else {
-                        FloatingWindowView(
-                            onClose = { stopSelf() },
-                            onChatClick = { 
-                                showChatDialog = true
-                                updateWindowSize(true)
-                            },
-                            onSettingsClick = { 
-                                openMainApp("settings")
-                                stopSelf()
-                            }
-                        )
+                        
+                        if (showChatDialog) {
+                            FloatingChatDialog(
+                                conversationId = conversationId,
+                                onClose = { 
+                                    showChatDialog = false
+                                    updateWindowSize(false)
+                                },
+                                onSettingsClick = { 
+                                    openMainApp("settings")
+                                    stopSelf()
+                                }
+                            )
+                        } else {
+                            FloatingWindowView(
+                                onClose = { stopSelf() },
+                                onChatClick = { 
+                                    showChatDialog = true
+                                    updateWindowSize(true)
+                                },
+                                onSettingsClick = { 
+                                    openMainApp("settings")
+                                    stopSelf()
+                                }
+                            )
+                        }
                     }
                 }
             }
