@@ -7,6 +7,9 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -17,14 +20,18 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import me.rerere.rikkahub.RouteActivity
+import me.rerere.rikkahub.ui.components.floatingwindow.FloatingChatDialog
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingWindowView
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
+import kotlin.uuid.Uuid
 
 class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner {
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
+    private var showChatDialog by mutableStateOf(false)
+    private var conversationId by mutableStateOf(Uuid.random())
     
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
@@ -72,11 +79,31 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setContent {
                 RikkahubTheme {
-                    FloatingWindowView(
-                        onClose = { stopSelf() },
-                        onChatClick = { openMainApp("chat") },
-                        onSettingsClick = { openMainApp("settings") }
-                    )
+                    if (showChatDialog) {
+                        FloatingChatDialog(
+                            conversationId = conversationId,
+                            onClose = { 
+                                showChatDialog = false
+                                updateWindowSize(false)
+                            },
+                            onSettingsClick = { 
+                                openMainApp("settings")
+                                stopSelf()
+                            }
+                        )
+                    } else {
+                        FloatingWindowView(
+                            onClose = { stopSelf() },
+                            onChatClick = { 
+                                showChatDialog = true
+                                updateWindowSize(true)
+                            },
+                            onSettingsClick = { 
+                                openMainApp("settings")
+                                stopSelf()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -86,32 +113,42 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
     }
     
+    private fun updateWindowSize(expanded: Boolean) {
+        floatingView?.let { view ->
+            windowManager?.let { wm ->
+                val params = view.layoutParams as WindowManager.LayoutParams
+                
+                if (expanded) {
+                    // Expand to show chat dialog
+                    val displayMetrics = resources.displayMetrics
+                    params.width = (displayMetrics.widthPixels * 0.9).toInt()
+                    params.height = (displayMetrics.heightPixels * 0.8).toInt()
+                    params.gravity = Gravity.CENTER
+                    params.x = 0
+                    params.y = 0
+                    params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                                   WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
+                } else {
+                    // Collapse to button
+                    params.width = WindowManager.LayoutParams.WRAP_CONTENT
+                    params.height = WindowManager.LayoutParams.WRAP_CONTENT
+                    params.gravity = Gravity.BOTTOM or Gravity.START
+                    params.x = 50
+                    params.y = 50
+                    params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                }
+                
+                wm.updateViewLayout(view, params)
+            }
+        }
+    }
+    
     private fun openMainApp(destination: String) {
         val intent = Intent(this, RouteActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("destination", destination)
-            putExtra("isFloatingWindow", true)
         }
-        
-        // Create ActivityOptions for a smaller, floating-style window
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val displayMetrics = resources.displayMetrics
-            val width = (displayMetrics.widthPixels * 0.85).toInt() // 85% of screen width
-            val height = (displayMetrics.heightPixels * 0.75).toInt() // 75% of screen height
-            
-            val options = android.app.ActivityOptions.makeBasic()
-            options.setLaunchBounds(
-                android.graphics.Rect(
-                    (displayMetrics.widthPixels - width) / 2, // Center horizontally
-                    (displayMetrics.heightPixels - height) / 2, // Center vertically
-                    (displayMetrics.widthPixels + width) / 2,
-                    (displayMetrics.heightPixels + height) / 2
-                )
-            )
-            startActivity(intent, options.toBundle())
-        } else {
-            startActivity(intent)
-        }
+        startActivity(intent)
     }
 
     override fun onDestroy() {
