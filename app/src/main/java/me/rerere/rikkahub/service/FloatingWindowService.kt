@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
-import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
@@ -75,9 +74,6 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        
-        // Setup lifecycle observer for OnBackPressedDispatcher
-        _onBackPressedDispatcher.setOnBackPressedDispatcherOwner(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
