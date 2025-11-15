@@ -24,6 +24,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.navigation.compose.rememberNavController
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -36,6 +37,7 @@ import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingChatDialog
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingWindowView
+import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.rememberCustomTtsState
@@ -114,9 +116,11 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 val toastState = rememberToasterState()
                 val tts = rememberCustomTtsState()
                 val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
+                val navController = rememberNavController()
                 
                 RikkahubTheme {
                     CompositionLocalProvider(
+                        LocalNavController provides navController,
                         LocalSettings provides settings,
                         LocalHighlighter provides highlighter,
                         LocalToaster provides toastState,
