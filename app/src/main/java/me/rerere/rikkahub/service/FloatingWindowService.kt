@@ -9,11 +9,11 @@ import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistry
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
-import androidx.activity.compose.setViewTreeActivityResultRegistryOwner
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -131,7 +131,6 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setViewTreeViewModelStoreOwner(this@FloatingWindowService)
             setViewTreeOnBackPressedDispatcherOwner(this@FloatingWindowService)
-            setViewTreeActivityResultRegistryOwner(this@FloatingWindowService)
             setContent {
                 val toastState = rememberToasterState()
                 val tts = rememberCustomTtsState()
@@ -140,6 +139,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
                 
                 RikkahubTheme {
                     CompositionLocalProvider(
+                        LocalActivityResultRegistryOwner provides this@FloatingWindowService,
                         LocalNavController provides navController,
                         LocalSettings provides settings,
                         LocalHighlighter provides highlighter,
