@@ -7,6 +7,10 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -42,12 +46,13 @@ import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
 
-class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
+class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner, OnBackPressedDispatcherOwner {
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private val _viewModelStore = ViewModelStore()
+    private val _onBackPressedDispatcher = OnBackPressedDispatcher()
     private var showChatDialog by mutableStateOf(false)
     private var conversationId by mutableStateOf(Uuid.random())
     
@@ -62,11 +67,17 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     
     override val viewModelStore: ViewModelStore
         get() = _viewModelStore
+    
+    override val onBackPressedDispatcher: OnBackPressedDispatcher
+        get() = _onBackPressedDispatcher
 
     override fun onCreate() {
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        
+        // Setup lifecycle observer for OnBackPressedDispatcher
+        _onBackPressedDispatcher.setOnBackPressedDispatcherOwner(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -102,6 +113,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeLifecycleOwner(this@FloatingWindowService)
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setViewTreeViewModelStoreOwner(this@FloatingWindowService)
+            setViewTreeOnBackPressedDispatcherOwner(this@FloatingWindowService)
             setContent {
                 val toastState = rememberToasterState()
                 val tts = rememberCustomTtsState()
