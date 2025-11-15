@@ -9,13 +9,18 @@ import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
+import androidx.activity.compose.setViewTreeActivityResultRegistryOwner
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.app.ActivityOptionsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -47,13 +52,24 @@ import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
 
-class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner, OnBackPressedDispatcherOwner {
+class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner, OnBackPressedDispatcherOwner, ActivityResultRegistryOwner {
     private var windowManager: WindowManager? = null
     private var floatingView: ComposeView? = null
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateRegistryController = SavedStateRegistryController.create(this)
     private val _viewModelStore = ViewModelStore()
     private val _onBackPressedDispatcher = OnBackPressedDispatcher()
+    private val _activityResultRegistry = object : ActivityResultRegistry() {
+        override fun <I : Any?, O : Any?> onLaunch(
+            requestCode: Int,
+            contract: ActivityResultContract<I, O>,
+            input: I,
+            options: ActivityOptionsCompat?
+        ) {
+            // No-op implementation for service context
+            // Activity results don't make sense in a service, but we need to provide the registry
+        }
+    }
     private var showChatDialog by mutableStateOf(false)
     private var conversationId by mutableStateOf(Uuid.random())
     
@@ -71,6 +87,9 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     
     override val onBackPressedDispatcher: OnBackPressedDispatcher
         get() = _onBackPressedDispatcher
+    
+    override val activityResultRegistry: ActivityResultRegistry
+        get() = _activityResultRegistry
 
     override fun onCreate() {
         super.onCreate()
@@ -112,6 +131,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             setViewTreeSavedStateRegistryOwner(this@FloatingWindowService)
             setViewTreeViewModelStoreOwner(this@FloatingWindowService)
             setViewTreeOnBackPressedDispatcherOwner(this@FloatingWindowService)
+            setViewTreeActivityResultRegistryOwner(this@FloatingWindowService)
             setContent {
                 val toastState = rememberToasterState()
                 val tts = rememberCustomTtsState()
