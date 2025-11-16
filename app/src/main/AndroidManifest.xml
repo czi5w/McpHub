@@ -65,7 +65,12 @@
     <service
       android:name=".service.FloatingWindowService"
       android:enabled="true"
-      android:exported="false" />
+      android:exported="false"
+      android:foregroundServiceType="specialUse">
+      <property
+        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+        android:value="Floating chat window overlay" />
+    </service>
 
     <provider
       android:name="androidx.core.content.FileProvider"
