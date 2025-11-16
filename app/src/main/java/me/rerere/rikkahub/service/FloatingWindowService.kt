@@ -1,5 +1,9 @@
 package me.rerere.rikkahub.service
 
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.graphics.PixelFormat
@@ -7,6 +11,7 @@ import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.WindowManager
+import androidx.core.app.NotificationCompat
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
 import androidx.activity.compose.LocalActivityResultRegistryOwner
@@ -76,6 +81,11 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private val highlighter by inject<Highlighter>()
     private val settingsStore by inject<SettingsStore>()
     
+    companion object {
+        private const val NOTIFICATION_ID = 1001
+        private const val CHANNEL_ID = "floating_window_channel"
+    }
+    
     override val lifecycle: Lifecycle
         get() = lifecycleRegistry
         
@@ -95,13 +105,53 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         super.onCreate()
         savedStateRegistryController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Start as foreground service to prevent system from killing it
+        startForeground(NOTIFICATION_ID, createNotification())
+        
         if (floatingView == null) {
             showFloatingWindow()
         }
         return START_STICKY
+    }
+    
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Floating Chat Window",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Keeps the floating chat window active"
+                setShowBadge(false)
+            }
+            val notificationManager = getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    private fun createNotification(): Notification {
+        val intent = Intent(this, RouteActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        
+        return NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Floating Chat")
+            .setContentText("Chat window is active")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentIntent(pendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
     }
 
     private fun showFloatingWindow() {
@@ -244,6 +294,14 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         floatingView = null
         windowManager = null
         _viewModelStore.clear()
+        
+        // Stop foreground service
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } else {
+            @Suppress("DEPRECATION")
+            stopForeground(true)
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
