@@ -222,11 +222,17 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     }
     
     private fun openMainApp(destination: String) {
-        val intent = Intent(this, RouteActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("destination", destination)
+        try {
+            val intent = Intent(this, RouteActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra("destination", destination)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // If starting activity fails, just stop the service
+            stopSelf()
         }
-        startActivity(intent)
     }
 
     override fun onDestroy() {
