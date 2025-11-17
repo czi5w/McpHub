@@ -51,6 +51,7 @@ fun FloatingChatWindow(
     
     val conversation by vm.conversation.collectAsStateWithLifecycle()
     val chatInputState = rememberChatInputState()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     Surface(
         modifier = modifier
@@ -63,7 +64,7 @@ fun FloatingChatWindow(
         ) {
             // Header
             FloatingWindowHeader(
-                title = conversation?.title ?: "New Chat",
+                title = conversation?.title ?: context.getString(me.rerere.rikkahub.R.string.floating_window_new_chat),
                 onMinimize = onMinimize,
                 onClose = onClose
             )

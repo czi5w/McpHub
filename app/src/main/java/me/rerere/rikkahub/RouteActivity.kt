@@ -29,6 +29,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -119,6 +121,7 @@ class RouteActivity : ComponentActivity() {
             }
             
             if (showPermissionDialog) {
+                val context = LocalContext.current
                 AlertDialog(
                     onDismissRequest = { 
                         showPermissionDialog = false
@@ -127,14 +130,14 @@ class RouteActivity : ComponentActivity() {
                             settingsStore.update { it.copy(floatingWindowMode = false) }
                         }
                     },
-                    title = { Text("Permission Required") },
-                    text = { Text("RikkaHub needs overlay permission to display floating windows. Please grant the permission in settings.") },
+                    title = { Text(stringResource(R.string.floating_window_permission_title)) },
+                    text = { Text(stringResource(R.string.floating_window_permission_message)) },
                     confirmButton = {
                         TextButton(onClick = {
                             FloatingWindowUtils.requestOverlayPermission(this@RouteActivity)
                             showPermissionDialog = false
                         }) {
-                            Text("Open Settings")
+                            Text(stringResource(R.string.floating_window_open_settings))
                         }
                     },
                     dismissButton = {
@@ -144,7 +147,7 @@ class RouteActivity : ComponentActivity() {
                                 settingsStore.update { it.copy(floatingWindowMode = false) }
                             }
                         }) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 )

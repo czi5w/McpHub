@@ -160,10 +160,10 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                 val context = LocalContext.current
                 ListItem(
                     headlineContent = {
-                        Text("Floating Window Mode")
+                        Text(stringResource(R.string.floating_window_mode))
                     },
                     supportingContent = {
-                        Text("Enable floating window for quick access")
+                        Text(stringResource(R.string.floating_window_mode_desc))
                     },
                     leadingContent = {
                         Icon(Lucide.MessageCircleWarning, null)

@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,6 +33,7 @@ import com.composables.icons.lucide.Monitor
 import com.composables.icons.lucide.Bot
 import com.composables.icons.lucide.Volume2
 import com.composables.icons.lucide.X
+import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.pages.setting.SettingVM
 import org.koin.androidx.compose.koinViewModel
 
@@ -43,6 +45,7 @@ fun FloatingSettingsWindow(
     vm: SettingVM = koinViewModel()
 ) {
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     
     Surface(
         modifier = modifier
@@ -55,7 +58,7 @@ fun FloatingSettingsWindow(
         ) {
             // Header
             FloatingWindowHeader(
-                title = "Settings",
+                title = context.getString(R.string.floating_window_quick_settings),
                 onMinimize = onMinimize,
                 onClose = onClose
             )
@@ -134,7 +137,7 @@ fun FloatingSettingsWindow(
                 
                 item {
                     Text(
-                        text = "Note: For full settings, open the main app",
+                        text = context.getString(R.string.floating_window_full_settings_note),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(16.dp)

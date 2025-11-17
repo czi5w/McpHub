@@ -21,11 +21,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.MessageCircle
 import com.composables.icons.lucide.Settings
 import com.composables.icons.lucide.X
+import me.rerere.rikkahub.R
 
 @Composable
 fun FloatingMenuWindow(
@@ -34,6 +36,7 @@ fun FloatingMenuWindow(
     onCloseClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     Surface(
         modifier = modifier
             .shadow(16.dp, RoundedCornerShape(16.dp)),
@@ -47,19 +50,19 @@ fun FloatingMenuWindow(
         ) {
             MenuItemRow(
                 icon = Lucide.MessageCircle,
-                text = "Chat",
+                text = context.getString(R.string.floating_window_menu_chat),
                 onClick = onChatClick
             )
             
             MenuItemRow(
                 icon = Lucide.Settings,
-                text = "Settings",
+                text = context.getString(R.string.floating_window_menu_settings),
                 onClick = onSettingsClick
             )
             
             MenuItemRow(
                 icon = Lucide.X,
-                text = "Close",
+                text = context.getString(R.string.floating_window_menu_close),
                 onClick = onCloseClick
             )
         }

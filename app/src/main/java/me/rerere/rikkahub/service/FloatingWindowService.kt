@@ -262,8 +262,8 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     }
     
     private fun createNotification() = NotificationCompat.Builder(this, CHANNEL_ID)
-        .setContentTitle("RikkaHub Floating Window")
-        .setContentText("Tap to open app")
+        .setContentTitle(getString(R.string.floating_window_notification_title))
+        .setContentText(getString(R.string.floating_window_notification_text))
         .setSmallIcon(R.mipmap.ic_launcher)
         .setContentIntent(
             PendingIntent.getActivity(
