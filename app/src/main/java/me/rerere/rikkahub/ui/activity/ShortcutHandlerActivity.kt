@@ -28,6 +28,7 @@ class ShortcutHandlerActivity : ComponentActivity() {
                 val intent = Intent(this, RouteActivity::class.java).apply {
                     action = Intent.ACTION_SEND
                     putExtra(Intent.EXTRA_STREAM, it.toString())
+                    putExtra("launch_normal", true) // Prevent auto-launching as floating window
                 }
                 startActivity(intent)
             }

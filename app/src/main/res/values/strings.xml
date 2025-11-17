@@ -748,4 +748,8 @@
   <string name="setting_display_page_code_block_auto_wrap_desc">Automatically wrap long lines in code blocks</string>
   <string name="setting_display_page_code_block_auto_collapse_title">Code Block Auto Collapse</string>
   <string name="setting_display_page_code_block_auto_collapse_desc">Automatically collapse code blocks by default</string>
+  <string name="setting_page_more_settings">For more settings, open the full settings page</string>
+  <string name="setting_page_open_full_settings">Open Full Settings</string>
+  <string name="floating_window_notification_title">Floating Chat</string>
+  <string name="floating_window_notification_text">Chat window is active</string>
 </resources>
