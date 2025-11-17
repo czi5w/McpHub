@@ -178,7 +178,7 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                                             me.rerere.rikkahub.utils.FloatingWindowUtils.requestOverlayPermission(context)
                                         }
                                     }
-                                    vm.update { it.copy(floatingWindowMode = enabled) }
+                                    vm.updateSettings(settings.copy(floatingWindowMode = enabled))
                                 }
                             }
                         )
