@@ -22,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,7 +52,7 @@ fun FloatingChatWindow(
     
     val conversation by vm.conversation.collectAsStateWithLifecycle()
     val chatInputState = rememberChatInputState()
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     
     Surface(
         modifier = modifier

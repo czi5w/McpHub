@@ -152,7 +152,8 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
         val params = createWindowLayoutParams(
             width = (resources.displayMetrics.widthPixels * 0.9).toInt(),
             height = (resources.displayMetrics.heightPixels * 0.7).toInt(),
-            gravity = Gravity.CENTER
+            gravity = Gravity.CENTER,
+            focusable = true
         )
         
         floatingView = createComposeView {
@@ -178,7 +179,8 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
         val params = createWindowLayoutParams(
             width = (resources.displayMetrics.widthPixels * 0.9).toInt(),
             height = (resources.displayMetrics.heightPixels * 0.7).toInt(),
-            gravity = Gravity.CENTER
+            gravity = Gravity.CENTER,
+            focusable = true
         )
         
         floatingView = createComposeView {
@@ -210,7 +212,8 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
     private fun createWindowLayoutParams(
         width: Int,
         height: Int,
-        gravity: Int
+        gravity: Int,
+        focusable: Boolean = false
     ): WindowManager.LayoutParams {
         val layoutType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -219,12 +222,18 @@ class FloatingWindowService : Service(), LifecycleOwner, ViewModelStoreOwner, Sa
             WindowManager.LayoutParams.TYPE_PHONE
         }
         
+        val flags = if (focusable) {
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        } else {
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        }
+        
         return WindowManager.LayoutParams(
             width,
             height,
             layoutType,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            flags,
             PixelFormat.TRANSLUCENT
         ).apply {
             this.gravity = gravity
