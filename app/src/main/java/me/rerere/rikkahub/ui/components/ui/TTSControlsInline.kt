@@ -4,18 +4,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +21,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.composables.icons.lucide.ChevronLeft
 import com.composables.icons.lucide.ChevronRight
@@ -34,92 +30,74 @@ import com.composables.icons.lucide.Pause
 import com.composables.icons.lucide.Play
 import com.composables.icons.lucide.X
 import me.rerere.rikkahub.ui.context.LocalTTSState
-import me.rerere.rikkahub.ui.context.LocalIsInFloatingWindow
 import me.rerere.rikkahub.ui.hooks.CustomTtsState
 import me.rerere.tts.model.PlaybackState
 import me.rerere.tts.model.PlaybackStatus
 
+/**
+ * Inline TTS controls component that can be embedded directly in UI
+ * without using FloatingWindow. Suitable for use in floating window service.
+ */
 @Composable
-fun TTSController() {
-    val context = LocalContext.current
+fun TTSControlsInline(
+    modifier: Modifier = Modifier,
+    compact: Boolean = false
+) {
     val ttsState = LocalTTSState.current
-    val isInFloatingWindow = LocalIsInFloatingWindow.current
-
+    val playbackState by ttsState.playbackState.collectAsState()
     val isSpeaking by ttsState.isSpeaking.collectAsState()
-    var isVisible by remember { mutableStateOf(false) }
+    var expand by remember { mutableStateOf(false) }
 
-    LaunchedEffect(isSpeaking) {
-        if (isSpeaking) {
-            // 如果开启，显示悬浮窗
-            isVisible = true
-        }
-    }
-
-    // Don't render TTS controller in floating window mode to avoid nested floating windows
-    if (isInFloatingWindow) {
+    if (!isSpeaking) {
         return
     }
 
-    FloatingWindow(
-        tag = "tts_controller",
-        visibility = isVisible
+    Row(
+        modifier = modifier.padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        val playbackState by ttsState.playbackState.collectAsState()
-        var expand by remember { mutableStateOf(false) }
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 4.dp,
-            modifier = Modifier.padding(8.dp),
-            shadowElevation = 4.dp,
+        TTSPlayPauseButton(playbackState = playbackState, ttsState = ttsState)
+
+        IconButton(
+            onClick = {
+                ttsState.stop()
+            }
         ) {
-            Row(
-                modifier = Modifier.padding(4.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            Icon(
+                imageVector = Lucide.X,
+                contentDescription = "Stop",
+            )
+        }
+
+        if (!compact) {
+            AnimatedVisibility(expand) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TTSSpeedButton(playbackState, ttsState)
+
+                    TTSFastForwardButton(ttsState = ttsState)
+                }
+            }
+
+            IconButton(
+                onClick = {
+                    expand = !expand
+                }
             ) {
-                PlayPauseButton(playbackState = playbackState, ttsState = ttsState)
-
-                IconButton(
-                    onClick = {
-                        ttsState.stop()
-                        isVisible = false
-                    }
-                ) {
-                    Icon(
-                        imageVector = Lucide.X,
-                        contentDescription = null,
-                    )
-                }
-
-                AnimatedVisibility(expand) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        SpeedButton(playbackState, ttsState)
-
-                        FastForwardButton(ttsState = ttsState)
-                    }
-                }
-
-                IconButton(
-                    onClick = {
-                        expand = !expand
-                    }
-                ) {
-                    Icon(
-                        imageVector = if (expand) Lucide.ChevronLeft else Lucide.ChevronRight,
-                        contentDescription = null,
-                    )
-                }
+                Icon(
+                    imageVector = if (expand) Lucide.ChevronLeft else Lucide.ChevronRight,
+                    contentDescription = "Expand",
+                )
             }
         }
     }
 }
 
 @Composable
-private fun FastForwardButton(ttsState: CustomTtsState) {
+private fun TTSFastForwardButton(ttsState: CustomTtsState) {
     IconButton(
         onClick = {
             ttsState.fastForward(5000)
@@ -127,13 +105,13 @@ private fun FastForwardButton(ttsState: CustomTtsState) {
     ) {
         Icon(
             imageVector = Lucide.FastForward,
-            contentDescription = null,
+            contentDescription = "Fast Forward",
         )
     }
 }
 
 @Composable
-private fun PlayPauseButton(
+private fun TTSPlayPauseButton(
     playbackState: PlaybackState,
     ttsState: CustomTtsState
 ) {
@@ -156,7 +134,7 @@ private fun PlayPauseButton(
     ) {
         Icon(
             imageVector = if (playbackState.status == PlaybackStatus.Playing) Lucide.Pause else Lucide.Play,
-            contentDescription = null,
+            contentDescription = if (playbackState.status == PlaybackStatus.Playing) "Pause" else "Play",
         )
         if (playbackState.status == PlaybackStatus.Playing || playbackState.status == PlaybackStatus.Buffering || playbackState.status == PlaybackStatus.Paused) {
             CircularProgressIndicator(
@@ -189,7 +167,7 @@ private fun PlayPauseButton(
 }
 
 @Composable
-private fun SpeedButton(
+private fun TTSSpeedButton(
     playbackState: PlaybackState,
     ttsState: CustomTtsState
 ) {

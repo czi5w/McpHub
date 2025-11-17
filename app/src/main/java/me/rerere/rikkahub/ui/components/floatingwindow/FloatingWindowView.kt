@@ -32,6 +32,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.MessageCircle
 import com.composables.icons.lucide.Settings
 import com.composables.icons.lucide.X
+import me.rerere.rikkahub.ui.components.ui.TTSControlsInline
 
 @Composable
 fun FloatingWindowView(
@@ -80,6 +81,9 @@ fun FloatingWindowView(
                     modifier = Modifier.padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    // TTS controls when expanded
+                    TTSControlsInline(compact = true)
+                    
                     // Chat button
                     IconButton(
                         onClick = onChatClick,

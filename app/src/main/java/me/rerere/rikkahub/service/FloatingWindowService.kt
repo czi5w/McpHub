@@ -52,6 +52,7 @@ import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.rememberCustomTtsState
 import me.rerere.rikkahub.ui.context.LocalTTSState
+import me.rerere.rikkahub.ui.context.LocalIsInFloatingWindow
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import org.koin.android.ext.android.inject
@@ -203,6 +204,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
                         LocalHighlighter provides highlighter,
                         LocalToaster provides toastState,
                         LocalTTSState provides tts,
+                        LocalIsInFloatingWindow provides true,
                     ) {
                         Toaster(
                             state = toastState,

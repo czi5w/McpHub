@@ -37,6 +37,7 @@ import com.dokar.sonner.ToastType
 import kotlinx.coroutines.flow.collectLatest
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.ui.components.ai.ChatInput
+import me.rerere.rikkahub.ui.components.ui.TTSControlsInline
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.rememberChatInputState
 import me.rerere.rikkahub.ui.pages.chat.ChatList
@@ -101,6 +102,9 @@ fun FloatingChatDialog(
                     }
                 },
                 actions = {
+                    // TTS controls inline in the app bar
+                    TTSControlsInline(compact = true)
+                    
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Lucide.Settings,
