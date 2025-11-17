@@ -156,7 +156,11 @@ class RouteActivity : ComponentActivity() {
     
     private fun startFloatingWindowService() {
         val intent = Intent(this, FloatingWindowService::class.java)
-        startService(intent)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
         // Close the activity after starting the service
         finish()
     }
