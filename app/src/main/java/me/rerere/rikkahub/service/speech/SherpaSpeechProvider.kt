@@ -286,16 +286,17 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
 
         audioRecord =
                 AudioRecord(
-                        // Use VOICE_RECOGNITION for better compatibility with background/service contexts
-                        // MIC source may not work properly when app doesn't have audio focus (e.g., floating window)
-                        MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                        // Try VOICE_COMMUNICATION for better background/service compatibility
+                        // VOICE_RECOGNITION (6) still shows volume=0.0 in floating window
+                        // VOICE_COMMUNICATION (7) is designed for VoIP and may work better
+                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
                         sampleRateInHz,
                         channelConfig,
                         audioFormat,
                         minBufferSize * 2
                 )
         
-        Log.d(TAG, "Created AudioRecord with source=VOICE_RECOGNITION, sampleRate=$sampleRateInHz, bufferSize=${minBufferSize * 2}")
+        Log.d(TAG, "Created AudioRecord with source=VOICE_COMMUNICATION, sampleRate=$sampleRateInHz, bufferSize=${minBufferSize * 2}")
         
         val recordingState = audioRecord?.state
         Log.d(TAG, "AudioRecord state: $recordingState (${if (recordingState == AudioRecord.STATE_INITIALIZED) "INITIALIZED" else "UNINITIALIZED"})")
@@ -320,6 +321,15 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                         val ret = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
                         if (ret > 0) {
                             readCount++
+                            
+                            // Log first few samples periodically for debugging
+                            if (readCount % 50 == 0) {
+                                val samplePreview = audioBuffer.take(10).joinToString(", ")
+                                val maxSample = audioBuffer.take(ret).maxOrNull() ?: 0
+                                val minSample = audioBuffer.take(ret).minOrNull() ?: 0
+                                Log.d(TAG, "Audio buffer preview: [$samplePreview...], max=$maxSample, min=$minSample")
+                            }
+                            
                             // 计算并更新音量级别
                             val volumeLevel = calculateVolumeLevel(audioBuffer, ret)
                             _volumeLevelFlow.value = volumeLevel
