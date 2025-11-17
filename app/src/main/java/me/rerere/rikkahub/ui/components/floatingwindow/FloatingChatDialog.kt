@@ -168,7 +168,7 @@ fun FloatingChatDialog(
                     settings = setting,
                     conversation = conversation,
                     mcpManager = vm.mcpManager,
-                    showVoiceButton = false, // Disable voice button in floating window
+                    useServiceCompatibleVoiceButton = true, // Use service-compatible version for floating window
                     onCancelClick = {
                         loadingJob?.cancel()
                     },
