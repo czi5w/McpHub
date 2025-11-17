@@ -184,8 +184,8 @@ fun FloatingSettingsDialog(
 
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.setting_page_search)) },
-                        supportingContent = { Text(stringResource(R.string.setting_page_search_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_search_service)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_search_service_desc)) },
                         leadingContent = { Icon(Lucide.Search, "Search") },
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
@@ -193,8 +193,8 @@ fun FloatingSettingsDialog(
 
                 item {
                     ListItem(
-                        headlineContent = { Text(stringResource(R.string.setting_page_tts)) },
-                        supportingContent = { Text(stringResource(R.string.setting_page_tts_desc)) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_tts_service)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_tts_service_desc)) },
                         leadingContent = { Icon(Lucide.Volume2, "TTS") },
                         modifier = Modifier.padding(vertical = 4.dp)
                     )
