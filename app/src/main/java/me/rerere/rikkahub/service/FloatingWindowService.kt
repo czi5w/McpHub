@@ -46,6 +46,7 @@ import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingChatDialog
+import me.rerere.rikkahub.ui.components.floatingwindow.FloatingSettingsDialog
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingWindowView
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.LocalSettings
@@ -75,7 +76,14 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             // Activity results don't make sense in a service, but we need to provide the registry
         }
     }
-    private var showChatDialog by mutableStateOf(false)
+    
+    private enum class DialogState {
+        NONE,
+        CHAT,
+        SETTINGS
+    }
+    
+    private var dialogState by mutableStateOf(DialogState.NONE)
     private var conversationId by mutableStateOf(Uuid.random())
     
     private val highlighter by inject<Highlighter>()
@@ -212,30 +220,44 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
                             showCloseButton = true,
                         )
                         
-                        if (showChatDialog) {
-                            FloatingChatDialog(
-                                conversationId = conversationId,
-                                onClose = { 
-                                    showChatDialog = false
-                                    updateWindowSize(false)
-                                },
-                                onSettingsClick = { 
-                                    openMainApp("settings")
-                                    stopSelf()
-                                }
-                            )
-                        } else {
-                            FloatingWindowView(
-                                onClose = { stopSelf() },
-                                onChatClick = { 
-                                    showChatDialog = true
-                                    updateWindowSize(true)
-                                },
-                                onSettingsClick = { 
-                                    openMainApp("settings")
-                                    stopSelf()
-                                }
-                            )
+                        when (dialogState) {
+                            DialogState.CHAT -> {
+                                FloatingChatDialog(
+                                    conversationId = conversationId,
+                                    onClose = { 
+                                        dialogState = DialogState.NONE
+                                        updateWindowSize(false)
+                                    },
+                                    onSettingsClick = { 
+                                        dialogState = DialogState.SETTINGS
+                                    }
+                                )
+                            }
+                            DialogState.SETTINGS -> {
+                                FloatingSettingsDialog(
+                                    onClose = { 
+                                        dialogState = DialogState.NONE
+                                        updateWindowSize(false)
+                                    },
+                                    onOpenFullSettings = {
+                                        openMainApp("settings")
+                                        stopSelf()
+                                    }
+                                )
+                            }
+                            DialogState.NONE -> {
+                                FloatingWindowView(
+                                    onClose = { stopSelf() },
+                                    onChatClick = { 
+                                        dialogState = DialogState.CHAT
+                                        updateWindowSize(true)
+                                    },
+                                    onSettingsClick = { 
+                                        dialogState = DialogState.SETTINGS
+                                        updateWindowSize(true)
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -284,6 +306,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
             val intent = Intent(this, RouteActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 putExtra("destination", destination)
+                putExtra("launch_normal", true) // Prevent auto-launching as floating window
             }
             startActivity(intent)
         } catch (e: Exception) {
