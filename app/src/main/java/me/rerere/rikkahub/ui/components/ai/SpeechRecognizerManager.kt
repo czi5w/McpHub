@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.Settings
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -129,20 +130,33 @@ fun VoiceInputButtonForService(
     val audioPermission = Manifest.permission.RECORD_AUDIO
 
     var isListening by remember { mutableStateOf(false) }
+    
+    // Log permission status on composition
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
+        Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
+    }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
+                Log.d("VoiceInputService", "Received recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 state.textContent.edit { replace(0, length, result.text) }
             }
         }
         launch {
             speechService.recognitionErrorFlow.collect { error ->
                 if (error.message.isNotBlank()) {
+                    Log.e("VoiceInputService", "Recognition error: code=${error.code}, message=${error.message}")
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
                 }
+            }
+        }
+        launch {
+            speechService.recognitionStateFlow.collect { state ->
+                Log.d("VoiceInputService", "Recognition state changed: $state")
             }
         }
     }
@@ -151,31 +165,66 @@ fun VoiceInputButtonForService(
         isListening = isListening,
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
+            Log.d("VoiceInputService", "onStartListening called")
+            val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
+            Log.d("VoiceInputService", "Permission check before starting: $hasPermission")
+            
+            if (!hasPermission) {
+                Log.w("VoiceInputService", "Permission not granted, cannot start recognition")
+                Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                return@VoiceInputButton
+            }
+            
             isListening = true
             coroutineScope.launch {
                 try {
-                    speechService.startRecognition(
+                    // Ensure service is initialized before starting
+                    Log.d("VoiceInputService", "Checking if speechService is initialized: ${speechService.isInitialized.value}")
+                    if (!speechService.isInitialized.value) {
+                        Log.d("VoiceInputService", "Speech service not initialized, initializing now")
+                        val initialized = speechService.initialize()
+                        Log.d("VoiceInputService", "Speech service initialization result: $initialized")
+                        if (!initialized) {
+                            isListening = false
+                            Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                    }
+                    
+                    Log.d("VoiceInputService", "Calling speechService.startRecognition")
+                    val started = speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
                         partialResults = true
                     )
+                    Log.d("VoiceInputService", "speechService.startRecognition returned: $started")
+                    if (!started) {
+                        isListening = false
+                        Toast.makeText(context, "启动语音识别失败", Toast.LENGTH_SHORT).show()
+                    }
                 } catch (e: Exception) {
+                    Log.e("VoiceInputService", "Exception starting recognition", e)
                     isListening = false
-                    Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "开始识别失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         },
         onStopListening = {
+            Log.d("VoiceInputService", "onStopListening called")
             isListening = false
             coroutineScope.launch {
                 try {
-                    speechService.stopRecognition()
+                    Log.d("VoiceInputService", "Calling speechService.stopRecognition")
+                    val stopped = speechService.stopRecognition()
+                    Log.d("VoiceInputService", "speechService.stopRecognition returned: $stopped")
                 } catch (e: Exception) {
-                    Toast.makeText(context, "停止识别失败", Toast.LENGTH_SHORT).show()
+                    Log.e("VoiceInputService", "Exception stopping recognition", e)
+                    Toast.makeText(context, "停止识别失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         },
         onRequestPermission = {
+            Log.d("VoiceInputService", "onRequestPermission called - opening app settings")
             // 在Service context中，打开应用设置页面让用户手动授权
             try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
@@ -185,6 +234,7 @@ fun VoiceInputButtonForService(
                 context.startActivity(intent)
                 Toast.makeText(context, "请在设置中授予麦克风权限", Toast.LENGTH_LONG).show()
             } catch (e: Exception) {
+                Log.e("VoiceInputService", "Failed to open settings", e)
                 Toast.makeText(context, "无法打开设置页面", Toast.LENGTH_SHORT).show()
             }
         }
