@@ -43,6 +43,7 @@ import com.dokar.sonner.Toaster
 import com.dokar.sonner.rememberToasterState
 import me.rerere.highlight.Highlighter
 import me.rerere.highlight.LocalHighlighter
+import me.rerere.rikkahub.R
 import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.ui.components.floatingwindow.FloatingChatDialog
@@ -152,6 +153,7 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
     private fun createNotification(): Notification {
         val intent = Intent(this, RouteActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra("launch_normal", true) // Open normal app when clicking notification
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
@@ -161,8 +163,8 @@ class FloatingWindowService : Service(), LifecycleOwner, SavedStateRegistryOwner
         )
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Floating Chat")
-            .setContentText("Chat window is active")
+            .setContentTitle(getString(R.string.floating_window_notification_title))
+            .setContentText(getString(R.string.floating_window_notification_text))
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

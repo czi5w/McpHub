@@ -664,4 +664,6 @@
   <string name="web_search_enabled">已启用网页搜索</string>
   <string name="setting_page_more_settings">更多设置请打开完整设置页面</string>
   <string name="setting_page_open_full_settings">打开完整设置</string>
+  <string name="floating_window_notification_title">浮窗聊天</string>
+  <string name="floating_window_notification_text">聊天窗口正在运行</string>
 </resources>
