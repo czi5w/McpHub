@@ -27,6 +27,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
+import kotlinx.coroutines.launch
 import com.composables.icons.lucide.BadgeInfo
 import com.composables.icons.lucide.Bot
 import com.composables.icons.lucide.Boxes
@@ -147,6 +149,38 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                                 }
                             },
                             modifier = Modifier.width(150.dp)
+                        )
+                    }
+                )
+            }
+
+
+            item("floatingWindowMode") {
+                val scope = rememberCoroutineScope()
+                val context = LocalContext.current
+                ListItem(
+                    headlineContent = {
+                        Text(stringResource(R.string.floating_window_mode))
+                    },
+                    supportingContent = {
+                        Text(stringResource(R.string.floating_window_mode_desc))
+                    },
+                    leadingContent = {
+                        Icon(Lucide.MessageCircleWarning, null)
+                    },
+                    trailingContent = {
+                        Switch(
+                            checked = settings.floatingWindowMode,
+                            onCheckedChange = { enabled ->
+                                scope.launch {
+                                    if (enabled) {
+                                        if (!me.rerere.rikkahub.utils.FloatingWindowUtils.hasOverlayPermission(context)) {
+                                            me.rerere.rikkahub.utils.FloatingWindowUtils.requestOverlayPermission(context)
+                                        }
+                                    }
+                                    vm.updateSettings(settings.copy(floatingWindowMode = enabled))
+                                }
+                            }
                         )
                     }
                 )

@@ -748,4 +748,20 @@
   <string name="setting_display_page_code_block_auto_wrap_desc">Automatically wrap long lines in code blocks</string>
   <string name="setting_display_page_code_block_auto_collapse_title">Code Block Auto Collapse</string>
   <string name="setting_display_page_code_block_auto_collapse_desc">Automatically collapse code blocks by default</string>
+  
+  <!-- Floating Window -->
+  <string name="floating_window_mode">Floating Window Mode</string>
+  <string name="floating_window_mode_desc">Enable floating window for quick access</string>
+  <string name="floating_window_permission_title">Permission Required</string>
+  <string name="floating_window_permission_message">RikkaHub needs overlay permission to display floating windows. Please grant the permission in settings.</string>
+  <string name="floating_window_open_settings">Open Settings</string>
+  <string name="floating_window_notification_title">RikkaHub Floating Window</string>
+  <string name="floating_window_notification_text">Tap to open app</string>
+  <string name="floating_window_menu_chat">Chat</string>
+  <string name="floating_window_menu_settings">Settings</string>
+  <string name="floating_window_menu_close">Close</string>
+  <string name="floating_window_minimize">Minimize</string>
+  <string name="floating_window_new_chat">New Chat</string>
+  <string name="floating_window_quick_settings">Quick Settings</string>
+  <string name="floating_window_full_settings_note">Note: For full settings, open the main app</string>
 </resources>
