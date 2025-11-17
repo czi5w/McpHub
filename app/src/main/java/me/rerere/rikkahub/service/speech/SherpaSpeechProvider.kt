@@ -286,13 +286,20 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
 
         audioRecord =
                 AudioRecord(
-                        //MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                        MediaRecorder.AudioSource.MIC,
+                        // Use VOICE_RECOGNITION for better compatibility with background/service contexts
+                        // MIC source may not work properly when app doesn't have audio focus (e.g., floating window)
+                        MediaRecorder.AudioSource.VOICE_RECOGNITION,
                         sampleRateInHz,
                         channelConfig,
                         audioFormat,
                         minBufferSize * 2
                 )
+        
+        Log.d(TAG, "Created AudioRecord with source=VOICE_RECOGNITION, sampleRate=$sampleRateInHz, bufferSize=${minBufferSize * 2}")
+        
+        val recordingState = audioRecord?.state
+        Log.d(TAG, "AudioRecord state: $recordingState (${if (recordingState == AudioRecord.STATE_INITIALIZED) "INITIALIZED" else "UNINITIALIZED"})")
+        
         audioRecord?.startRecording()
         _recognitionState.value = SpeechService.RecognitionState.RECOGNIZING
         // 重置音量
