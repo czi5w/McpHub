@@ -152,6 +152,7 @@ fun ChatInput(
     enableSearch: Boolean,
     onToggleSearch: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    showVoiceButton: Boolean = true,
     onUpdateChatModel: (Model) -> Unit,
     onUpdateAssistant: (Assistant) -> Unit,
     onUpdateSearchService: (Int) -> Unit,
@@ -209,7 +210,7 @@ fun ChatInput(
             MediaFileInputRow(state = state, context = context)
 
             // Text Input Row
-            TextInputRow(state = state, context = context)
+            TextInputRow(state = state, context = context, showVoiceButton = showVoiceButton)
 
             // Actions Row
             Row(
@@ -374,6 +375,7 @@ fun ChatInput(
 fun TextInputRow(
     state: ChatInputState,
     context: Context,
+    showVoiceButton: Boolean = true,
 ) {
     val assistant = LocalSettings.current.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
@@ -475,10 +477,11 @@ fun TextInputRow(
             }
         }
 
-        Spacer(Modifier.width(8.dp))
-
-        // 语音输入按钮
-        VoiceInputButtonWithSpeechService(state, speechService, context)
+        // 语音输入按钮 - 仅在非浮窗模式下显示
+        if (showVoiceButton) {
+            Spacer(Modifier.width(8.dp))
+            VoiceInputButtonWithSpeechService(state, speechService, context)
+        }
     }
 }
 

@@ -168,6 +168,7 @@ fun FloatingChatDialog(
                     settings = setting,
                     conversation = conversation,
                     mcpManager = vm.mcpManager,
+                    showVoiceButton = false, // Disable voice button in floating window
                     onCancelClick = {
                         loadingJob?.cancel()
                     },
