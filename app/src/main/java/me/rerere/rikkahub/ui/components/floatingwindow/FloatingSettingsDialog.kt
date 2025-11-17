@@ -29,10 +29,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.BadgeInfo
 import com.composables.icons.lucide.Bot
 import com.composables.icons.lucide.Boxes
 import com.composables.icons.lucide.ChevronRight
 import com.composables.icons.lucide.Hammer
+import com.composables.icons.lucide.Library
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Monitor
 import com.composables.icons.lucide.Search
@@ -43,7 +45,9 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.hooks.rememberColorMode
+import me.rerere.rikkahub.ui.pages.setting.SettingAboutPage
 import me.rerere.rikkahub.ui.pages.setting.SettingDisplayPage
+import me.rerere.rikkahub.ui.pages.setting.SettingMcpPage
 import me.rerere.rikkahub.ui.pages.setting.SettingModelPage
 import me.rerere.rikkahub.ui.pages.setting.SettingProviderPage
 import me.rerere.rikkahub.ui.pages.setting.SettingSearchPage
@@ -60,6 +64,8 @@ sealed class SettingsScreen {
     data object Providers : SettingsScreen()
     data object Search : SettingsScreen()
     data object TTS : SettingsScreen()
+    data object MCP : SettingsScreen()
+    data object About : SettingsScreen()
 }
 
 @Composable
@@ -99,6 +105,8 @@ fun FloatingSettingsDialog(
                             SettingsScreen.Providers -> stringResource(R.string.setting_page_providers)
                             SettingsScreen.Search -> stringResource(R.string.setting_page_search_service)
                             SettingsScreen.TTS -> stringResource(R.string.setting_page_tts_service)
+                            SettingsScreen.MCP -> stringResource(R.string.setting_page_mcp)
+                            SettingsScreen.About -> stringResource(R.string.setting_page_about)
                         },
                         style = MaterialTheme.typography.titleMedium
                     )
@@ -139,6 +147,8 @@ fun FloatingSettingsDialog(
                     onNavigateToProviders = { currentScreen = SettingsScreen.Providers },
                     onNavigateToSearch = { currentScreen = SettingsScreen.Search },
                     onNavigateToTTS = { currentScreen = SettingsScreen.TTS },
+                    onNavigateToMCP = { currentScreen = SettingsScreen.MCP },
+                    onNavigateToAbout = { currentScreen = SettingsScreen.About },
                     onOpenFullSettings = onOpenFullSettings
                 )
                 SettingsScreen.Display -> SettingDisplayPage()
@@ -146,6 +156,8 @@ fun FloatingSettingsDialog(
                 SettingsScreen.Providers -> SettingProviderPage()
                 SettingsScreen.Search -> SettingSearchPage()
                 SettingsScreen.TTS -> SettingTTSPage()
+                SettingsScreen.MCP -> SettingMcpPage()
+                SettingsScreen.About -> SettingAboutPage()
             }
         }
     }
@@ -159,6 +171,8 @@ private fun SettingsMainScreen(
     onNavigateToProviders: () -> Unit,
     onNavigateToSearch: () -> Unit,
     onNavigateToTTS: () -> Unit,
+    onNavigateToMCP: () -> Unit,
+    onNavigateToAbout: () -> Unit,
     onOpenFullSettings: () -> Unit
 ) {
     LazyColumn(
@@ -275,11 +289,35 @@ private fun SettingsMainScreen(
         }
 
         item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.setting_page_mcp)) },
+                supportingContent = { Text(stringResource(R.string.setting_page_mcp_desc)) },
+                leadingContent = { Icon(Lucide.Library, "MCP") },
+                trailingContent = { Icon(Lucide.ChevronRight, null) },
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .clickable { onNavigateToMCP() }
+            )
+        }
+
+        item {
             Text(
                 text = stringResource(R.string.setting_page_more_settings),
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+
+        item {
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.setting_page_about)) },
+                supportingContent = { Text(stringResource(R.string.setting_page_about_desc)) },
+                leadingContent = { Icon(Lucide.BadgeInfo, "About") },
+                trailingContent = { Icon(Lucide.ChevronRight, null) },
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .clickable { onNavigateToAbout() }
             )
         }
 
