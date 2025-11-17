@@ -15,18 +15,23 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -43,6 +48,7 @@ import kotlinx.serialization.Serializable
 import me.rerere.highlight.Highlighter
 import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.service.FloatingWindowService
 import me.rerere.rikkahub.ui.components.ui.TTSController
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.LocalSettings
@@ -76,6 +82,7 @@ import me.rerere.rikkahub.ui.pages.translator.TranslatorPage
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
+import me.rerere.rikkahub.utils.FloatingWindowUtils
 import okhttp3.OkHttpClient
 import org.koin.android.ext.android.inject
 import kotlin.uuid.Uuid
@@ -95,6 +102,54 @@ class RouteActivity : ComponentActivity() {
         setContent {
             val navStack = rememberNavController()
             this.navStack = navStack
+            val settings by settingsStore.settingsFlow.collectAsStateWithLifecycle()
+            var showPermissionDialog by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            
+            // Check if floating window mode is enabled
+            LaunchedEffect(settings.floatingWindowMode) {
+                if (settings.floatingWindowMode) {
+                    if (FloatingWindowUtils.hasOverlayPermission(this@RouteActivity)) {
+                        FloatingWindowService.startService(this@RouteActivity)
+                        finish() // Close the activity and show floating window
+                    } else {
+                        showPermissionDialog = true
+                    }
+                }
+            }
+            
+            if (showPermissionDialog) {
+                AlertDialog(
+                    onDismissRequest = { 
+                        showPermissionDialog = false
+                        // Disable floating mode if permission denied
+                        scope.launch {
+                            settingsStore.update { it.copy(floatingWindowMode = false) }
+                        }
+                    },
+                    title = { Text("Permission Required") },
+                    text = { Text("RikkaHub needs overlay permission to display floating windows. Please grant the permission in settings.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            FloatingWindowUtils.requestOverlayPermission(this@RouteActivity)
+                            showPermissionDialog = false
+                        }) {
+                            Text("Open Settings")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = {
+                            showPermissionDialog = false
+                            scope.launch {
+                                settingsStore.update { it.copy(floatingWindowMode = false) }
+                            }
+                        }) {
+                            Text("Cancel")
+                        }
+                    }
+                )
+            }
+            
             ShareHandler(navStack)
             RikkahubTheme {
                 setSingletonImageLoaderFactory { context ->
