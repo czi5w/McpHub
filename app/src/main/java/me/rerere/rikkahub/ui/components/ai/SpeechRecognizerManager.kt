@@ -124,6 +124,7 @@ fun VoiceInputButtonWithSpeechService(
         onStartListening = {
             isListening = true
             isInteractionMode = true
+            state.voiceInteractionMode = true
             lastRecognizedText = ""
             autoSendJob?.cancel()
             coroutineScope.launch {
@@ -136,6 +137,7 @@ fun VoiceInputButtonWithSpeechService(
                 } catch (e: Exception) {
                     isListening = false
                     isInteractionMode = false
+                    state.voiceInteractionMode = false
                     Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -143,6 +145,7 @@ fun VoiceInputButtonWithSpeechService(
         onStopListening = {
             isListening = false
             isInteractionMode = false
+            state.voiceInteractionMode = false
             autoSendJob?.cancel()
             coroutineScope.launch {
                 try {
@@ -254,6 +257,7 @@ fun VoiceInputButtonForService(
             
             isListening = true
             isInteractionMode = true
+            state.voiceInteractionMode = true
             lastRecognizedText = ""
             autoSendJob?.cancel()
             coroutineScope.launch {
@@ -267,6 +271,7 @@ fun VoiceInputButtonForService(
                         if (!initialized) {
                             isListening = false
                             isInteractionMode = false
+                            state.voiceInteractionMode = false
                             Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
                             return@launch
                         }
@@ -282,12 +287,14 @@ fun VoiceInputButtonForService(
                     if (!started) {
                         isListening = false
                         isInteractionMode = false
+                        state.voiceInteractionMode = false
                         Toast.makeText(context, "启动语音识别失败", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     Log.e("VoiceInputService", "Exception starting recognition", e)
                     isListening = false
                     isInteractionMode = false
+                    state.voiceInteractionMode = false
                     Toast.makeText(context, "开始识别失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -296,6 +303,7 @@ fun VoiceInputButtonForService(
             Log.d("VoiceInputService", "onStopListening called")
             isListening = false
             isInteractionMode = false
+            state.voiceInteractionMode = false
             autoSendJob?.cancel()
             coroutineScope.launch {
                 try {

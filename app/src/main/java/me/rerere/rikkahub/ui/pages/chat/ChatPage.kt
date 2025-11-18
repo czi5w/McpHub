@@ -64,6 +64,7 @@ import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.ui.hooks.EditStateContent
@@ -232,6 +233,25 @@ private fun ChatPageContent(
 
     LaunchedEffect(loadingJob) {
         inputState.loading = loadingJob != null
+    }
+
+    // TTS for voice interaction mode
+    val tts = LocalTTSState.current
+    LaunchedEffect(conversation.currentMessages.size, inputState.voiceInteractionMode) {
+        // When in voice interaction mode, automatically play the last assistant message
+        if (inputState.voiceInteractionMode && conversation.currentMessages.isNotEmpty()) {
+            val lastMessage = conversation.currentMessages.last()
+            if (lastMessage.role == me.rerere.rikkahub.data.model.MessageRole.ASSISTANT && !inputState.loading) {
+                // Wait a bit for the message to be fully rendered
+                kotlinx.coroutines.delay(500)
+                val messageText = lastMessage.toText()
+                if (messageText.isNotBlank()) {
+                    tts.speak(messageText, flushCalled = true)
+                }
+                // Reset voice interaction mode after playing response
+                inputState.voiceInteractionMode = false
+            }
+        }
     }
 
     Surface(
