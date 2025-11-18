@@ -53,6 +53,7 @@ import com.composables.icons.lucide.X
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.R
@@ -241,7 +242,7 @@ private fun ChatPageContent(
         // When in voice interaction mode, automatically play the last assistant message
         if (inputState.voiceInteractionMode && conversation.currentMessages.isNotEmpty()) {
             val lastMessage = conversation.currentMessages.last()
-            if (lastMessage.role == me.rerere.rikkahub.data.model.MessageRole.ASSISTANT && !inputState.loading) {
+            if (lastMessage.role == MessageRole.ASSISTANT && !inputState.loading) {
                 // Wait a bit for the message to be fully rendered
                 kotlinx.coroutines.delay(500)
                 val messageText = lastMessage.toText()
