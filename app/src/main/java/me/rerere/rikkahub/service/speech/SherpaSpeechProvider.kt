@@ -139,7 +139,9 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
         try {
             val modelDirName = "sherpa-ncnn-streaming-zipformer-bilingual-zh-en-2023-02-13"
             val assetModelDir = "models/$modelDirName"
+            Log.d(TAG, "Copying model files from assets: $assetModelDir")
             localModelDir = copyAssetDirToCache(assetModelDir, context.filesDir)
+            Log.d(TAG, "Model files copied to: ${localModelDir.absolutePath}")
         } catch (e: IOException) {
             Log.e(TAG, "Failed to copy model assets.", e)
             _recognitionState.value = SpeechService.RecognitionState.ERROR
@@ -171,6 +173,34 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                 numThreads = 2,
                 useGPU = false
             )
+        
+        Log.d(TAG, "Model config created:")
+        Log.d(TAG, "  encoderParam: ${modelConfig.encoderParam}")
+        Log.d(TAG, "  encoderBin: ${modelConfig.encoderBin}")
+        Log.d(TAG, "  decoderParam: ${modelConfig.decoderParam}")
+        Log.d(TAG, "  decoderBin: ${modelConfig.decoderBin}")
+        Log.d(TAG, "  joinerParam: ${modelConfig.joinerParam}")
+        Log.d(TAG, "  joinerBin: ${modelConfig.joinerBin}")
+        Log.d(TAG, "  tokens: ${modelConfig.tokens}")
+        
+        // Verify files exist
+        val filesToCheck = listOf(
+            modelConfig.encoderParam,
+            modelConfig.encoderBin,
+            modelConfig.decoderParam,
+            modelConfig.decoderBin,
+            modelConfig.joinerParam,
+            modelConfig.joinerBin,
+            modelConfig.tokens
+        )
+        filesToCheck.forEach { path ->
+            val file = File(path)
+            if (!file.exists()) {
+                Log.e(TAG, "Model file does not exist: $path")
+            } else {
+                Log.d(TAG, "Model file exists: $path (${file.length()} bytes)")
+            }
+        }
 
         val decoderConfig = getDecoderConfig(method = "greedy_search", numActivePaths = 4)
 
@@ -187,11 +217,20 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                 hotwordsScore = 1.5f
             )
 
-        recognizer =
-                SherpaNcnn(
-                        config = recognizerConfig,
-                        assetManager = null // Force using newFromFile
-                )
+        Log.d(TAG, "Creating SherpaNcnn recognizer...")
+        try {
+            recognizer =
+                    SherpaNcnn(
+                            config = recognizerConfig,
+                            assetManager = null // Force using newFromFile
+                    )
+            Log.d(TAG, "SherpaNcnn recognizer created successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create SherpaNcnn recognizer", e)
+            _recognitionState.value = SpeechService.RecognitionState.ERROR
+            _recognitionError.value =
+                    SpeechService.RecognitionError(-1, "Failed to create recognizer: ${e.message}")
+        }
     }
 
     /**
@@ -247,13 +286,21 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
 
         audioRecord =
                 AudioRecord(
-                        //MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                        MediaRecorder.AudioSource.MIC,
+                        // Try VOICE_COMMUNICATION for better background/service compatibility
+                        // VOICE_RECOGNITION (6) still shows volume=0.0 in floating window
+                        // VOICE_COMMUNICATION (7) is designed for VoIP and may work better
+                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
                         sampleRateInHz,
                         channelConfig,
                         audioFormat,
                         minBufferSize * 2
                 )
+        
+        Log.d(TAG, "Created AudioRecord with source=VOICE_COMMUNICATION, sampleRate=$sampleRateInHz, bufferSize=${minBufferSize * 2}")
+        
+        val recordingState = audioRecord?.state
+        Log.d(TAG, "AudioRecord state: $recordingState (${if (recordingState == AudioRecord.STATE_INITIALIZED) "INITIALIZED" else "UNINITIALIZED"})")
+        
         audioRecord?.startRecording()
         _recognitionState.value = SpeechService.RecognitionState.RECOGNIZING
         // 重置音量
@@ -266,16 +313,35 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                     val bufferSize = minBufferSize
                     val audioBuffer = ShortArray(bufferSize)
                     var lastText = ""
+                    var samplesProcessed = 0
+                    var readCount = 0
 
                     while (isActive &&
                             _recognitionState.value == SpeechService.RecognitionState.RECOGNIZING) {
                         val ret = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
                         if (ret > 0) {
+                            readCount++
+                            
+                            // Log first few samples periodically for debugging
+                            if (readCount % 50 == 0) {
+                                val samplePreview = audioBuffer.take(10).joinToString(", ")
+                                val maxSample = audioBuffer.take(ret).maxOrNull() ?: 0
+                                val minSample = audioBuffer.take(ret).minOrNull() ?: 0
+                                Log.d(TAG, "Audio buffer preview: [$samplePreview...], max=$maxSample, min=$minSample")
+                            }
+                            
                             // 计算并更新音量级别
                             val volumeLevel = calculateVolumeLevel(audioBuffer, ret)
                             _volumeLevelFlow.value = volumeLevel
+                            
+                            // Log audio capture details periodically
+                            if (readCount % 50 == 0) {
+                                Log.d(TAG, "Audio read #$readCount: samples=$ret, volume=$volumeLevel")
+                            }
 
                             val samples = FloatArray(ret) { i -> audioBuffer[i] / 32768.0f }
+                            samplesProcessed += ret
+                            
                             recognizer?.let {
                                 it.acceptSamples(samples)
                                 while (it.isReady()) {
@@ -283,9 +349,15 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                                 }
                                 val isEndpoint = it.isEndpoint()
                                 val text = it.text
+                                
+                                // Log recognizer state periodically
+                                if (readCount % 50 == 0) {
+                                    Log.d(TAG, "Recognizer state: ready=${it.isReady()}, endpoint=$isEndpoint, text='$text', totalSamples=$samplesProcessed")
+                                }
 
                                 if (text.isNotBlank() && lastText != text) {
                                     lastText = text
+                                    Log.d(TAG, "Recognition update: text='$text', isFinal=$isEndpoint")
                                     _recognitionResult.value =
                                             SpeechService.RecognitionResult(
                                                     text = text,
@@ -294,6 +366,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                                 }
 
                                 if (isEndpoint) {
+                                    Log.d(TAG, "Endpoint detected, resetting recognizer")
                                     it.reset(false)
                                     // If not in continuous mode, stop after first endpoint
                                     if (!continuousMode) {
@@ -301,6 +374,10 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                                                 SpeechService.RecognitionState.IDLE
                                         return@launch
                                     }
+                                }
+                            } ?: run {
+                                if (readCount % 50 == 0) {
+                                    Log.w(TAG, "Recognizer is null!")
                                 }
                             }
                         }
@@ -310,7 +387,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                         _recognitionState.value = SpeechService.RecognitionState.IDLE
                         _volumeLevelFlow.value = 0f // 重置音量
                     }
-                    Log.d(TAG, "Stopped recording.")
+                    Log.d(TAG, "Stopped recording. Total reads: $readCount, total samples: $samplesProcessed")
                 }
         return true
     }
