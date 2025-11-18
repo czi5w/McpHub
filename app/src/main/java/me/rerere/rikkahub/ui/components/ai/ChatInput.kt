@@ -75,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -198,11 +199,16 @@ fun ChatInput(
     }
     
     // Handle auto-send trigger from voice input
-    LaunchedEffect(state.shouldTriggerAutoSend) {
-        if (state.shouldTriggerAutoSend) {
-            state.shouldTriggerAutoSend = false
-            sendMessage()
-        }
+    LaunchedEffect(Unit) {
+        snapshotFlow { state.shouldTriggerAutoSend }
+            .collect { shouldSend ->
+                Log.d("VoiceAutoSend", "shouldTriggerAutoSend changed to: $shouldSend")
+                if (shouldSend) {
+                    Log.d("VoiceAutoSend", "Executing auto-send")
+                    state.shouldTriggerAutoSend = false
+                    sendMessage()
+                }
+            }
     }
 
     Surface(

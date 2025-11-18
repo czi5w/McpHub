@@ -77,15 +77,20 @@ fun VoiceInputButtonWithSpeechService(
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
                 
+                Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
+                
                 // 当收到最终结果时，启动3秒倒计时自动发送
                 if (result.isFinal && result.text.isNotBlank()) {
+                    Log.d("VoiceAutoSend", "Final result received, starting 3-second timer")
                     // 取消之前的定时器
                     autoSendJob?.cancel()
                     // 启动新的3秒定时器
                     autoSendJob = launch {
                         delay(3000)
+                        Log.d("VoiceAutoSend", "Timer completed. isEmpty=${state.isEmpty()}")
                         // 3秒后，如果输入框有内容，触发自动发送
                         if (!state.isEmpty()) {
+                            Log.d("VoiceAutoSend", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
                         }
                     }
