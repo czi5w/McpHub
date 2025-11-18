@@ -40,18 +40,21 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
- * 手动控制的语音识别管理器
- * 点击开始录音 → 用户说话 → 再次点击停止
+ * 语音交互按钮 - 支持自动发送和语音响应
+ * 点击开始录音 → 用户说话 → 3秒无输入自动发送 → 播放AI语音响应
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
@@ -65,12 +68,41 @@ fun VoiceInputButtonWithSpeechService(
     }
 
     var isListening by remember { mutableStateOf(false) }
+    var isInteractionMode by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastRecognizedText by remember { mutableStateOf("") }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
+                
+                // 语音交互模式：检测到新输入时重置3秒计时器
+                if (isInteractionMode && result.text.isNotBlank() && result.text != lastRecognizedText) {
+                    lastRecognizedText = result.text
+                    
+                    // 取消之前的自动发送任务
+                    autoSendJob?.cancel()
+                    
+                    // 启动新的3秒倒计时
+                    autoSendJob = launch {
+                        delay(3000) // 等待3秒
+                        if (isInteractionMode && result.text.isNotBlank()) {
+                            // 停止录音
+                            isListening = false
+                            isInteractionMode = false
+                            try {
+                                speechService.stopRecognition()
+                            } catch (e: Exception) {
+                                Log.e("VoiceInteraction", "停止识别失败", e)
+                            }
+                            
+                            // 自动发送消息
+                            onAutoSend?.invoke()
+                        }
+                    }
+                }
             }
         }
         launch {
@@ -78,6 +110,8 @@ fun VoiceInputButtonWithSpeechService(
                 if (error.message.isNotBlank()) {
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
+                    isInteractionMode = false
+                    autoSendJob?.cancel()
                 }
             }
         }
@@ -85,9 +119,14 @@ fun VoiceInputButtonWithSpeechService(
 
     VoiceInputButton(
         isListening = isListening,
+        isInteractionMode = isInteractionMode,
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             isListening = true
+            isInteractionMode = true
+            state.voiceInteractionMode = true
+            lastRecognizedText = ""
+            autoSendJob?.cancel()
             coroutineScope.launch {
                 try {
                     speechService.startRecognition(
@@ -97,12 +136,17 @@ fun VoiceInputButtonWithSpeechService(
                     )
                 } catch (e: Exception) {
                     isListening = false
+                    isInteractionMode = false
+                    state.voiceInteractionMode = false
                     Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
         },
         onStopListening = {
             isListening = false
+            isInteractionMode = false
+            state.voiceInteractionMode = false
+            autoSendJob?.cancel()
             coroutineScope.launch {
                 try {
                     speechService.stopRecognition()
@@ -119,17 +163,22 @@ fun VoiceInputButtonWithSpeechService(
 
 /**
  * 语音输入按钮 - 用于Service context的版本（不使用ActivityResultLauncher）
+ * 支持语音交互模式
  */
 @Composable
 fun VoiceInputButtonForService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
 
     var isListening by remember { mutableStateOf(false) }
+    var isInteractionMode by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastRecognizedText by remember { mutableStateOf("") }
     
     // Log permission status on composition
     LaunchedEffect(Unit) {
@@ -143,6 +192,34 @@ fun VoiceInputButtonForService(
             speechService.recognitionResultFlow.collect { result ->
                 Log.d("VoiceInputService", "Received recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 state.textContent.edit { replace(0, length, result.text) }
+                
+                // 语音交互模式：检测到新输入时重置3秒计时器
+                if (isInteractionMode && result.text.isNotBlank() && result.text != lastRecognizedText) {
+                    lastRecognizedText = result.text
+                    Log.d("VoiceInputService", "New text detected, resetting 3s timer")
+                    
+                    // 取消之前的自动发送任务
+                    autoSendJob?.cancel()
+                    
+                    // 启动新的3秒倒计时
+                    autoSendJob = launch {
+                        delay(3000) // 等待3秒
+                        if (isInteractionMode && result.text.isNotBlank()) {
+                            Log.d("VoiceInputService", "3s timeout reached, auto-sending message")
+                            // 停止录音
+                            isListening = false
+                            isInteractionMode = false
+                            try {
+                                speechService.stopRecognition()
+                            } catch (e: Exception) {
+                                Log.e("VoiceInputService", "停止识别失败", e)
+                            }
+                            
+                            // 自动发送消息
+                            onAutoSend?.invoke()
+                        }
+                    }
+                }
             }
         }
         launch {
@@ -151,6 +228,8 @@ fun VoiceInputButtonForService(
                     Log.e("VoiceInputService", "Recognition error: code=${error.code}, message=${error.message}")
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
+                    isInteractionMode = false
+                    autoSendJob?.cancel()
                 }
             }
         }
@@ -163,6 +242,7 @@ fun VoiceInputButtonForService(
 
     VoiceInputButton(
         isListening = isListening,
+        isInteractionMode = isInteractionMode,
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
@@ -176,6 +256,10 @@ fun VoiceInputButtonForService(
             }
             
             isListening = true
+            isInteractionMode = true
+            state.voiceInteractionMode = true
+            lastRecognizedText = ""
+            autoSendJob?.cancel()
             coroutineScope.launch {
                 try {
                     // Ensure service is initialized before starting
@@ -186,6 +270,8 @@ fun VoiceInputButtonForService(
                         Log.d("VoiceInputService", "Speech service initialization result: $initialized")
                         if (!initialized) {
                             isListening = false
+                            isInteractionMode = false
+                            state.voiceInteractionMode = false
                             Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
                             return@launch
                         }
@@ -200,11 +286,15 @@ fun VoiceInputButtonForService(
                     Log.d("VoiceInputService", "speechService.startRecognition returned: $started")
                     if (!started) {
                         isListening = false
+                        isInteractionMode = false
+                        state.voiceInteractionMode = false
                         Toast.makeText(context, "启动语音识别失败", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     Log.e("VoiceInputService", "Exception starting recognition", e)
                     isListening = false
+                    isInteractionMode = false
+                    state.voiceInteractionMode = false
                     Toast.makeText(context, "开始识别失败: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -212,6 +302,9 @@ fun VoiceInputButtonForService(
         onStopListening = {
             Log.d("VoiceInputService", "onStopListening called")
             isListening = false
+            isInteractionMode = false
+            state.voiceInteractionMode = false
+            autoSendJob?.cancel()
             coroutineScope.launch {
                 try {
                     Log.d("VoiceInputService", "Calling speechService.stopRecognition")
@@ -247,6 +340,7 @@ fun VoiceInputButtonForService(
 @Composable
 private fun VoiceInputButton(
     isListening: Boolean,
+    isInteractionMode: Boolean = false,
     hasPermission: Boolean,
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
@@ -257,8 +351,11 @@ private fun VoiceInputButton(
             .size(42.dp)
             .clip(CircleShape)
             .background(
-                if (isListening) MaterialTheme.colorScheme.secondaryContainer
-                else MaterialTheme.colorScheme.primary
+                when {
+                    isInteractionMode -> MaterialTheme.colorScheme.tertiaryContainer // 交互模式 - 紫色/特殊色
+                    isListening -> MaterialTheme.colorScheme.secondaryContainer // 录音中 - 次要色
+                    else -> MaterialTheme.colorScheme.primary // 空闲 - 主色
+                }
             )
             .clickable {
                 if (hasPermission) {
@@ -276,7 +373,11 @@ private fun VoiceInputButton(
         Icon(
             imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
             contentDescription = if (isListening) "停止语音" else "语音输入",
-            tint = MaterialTheme.colorScheme.onPrimary
+            tint = when {
+                isInteractionMode -> MaterialTheme.colorScheme.onTertiaryContainer
+                isListening -> MaterialTheme.colorScheme.onSecondaryContainer
+                else -> MaterialTheme.colorScheme.onPrimary
+            }
         )
     }
 }
