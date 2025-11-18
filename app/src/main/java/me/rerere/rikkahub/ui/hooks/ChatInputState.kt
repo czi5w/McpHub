@@ -41,6 +41,7 @@ class ChatInputState {
     var messageContent by mutableStateOf(listOf<UIMessagePart>())
     var editingMessage by mutableStateOf<Uuid?>(null)
     var loading by mutableStateOf(false)
+    var shouldTriggerAutoSend by mutableStateOf(false)
 
     fun clearInput() {
         textContent.setTextAndPlaceCursorAtEnd("")

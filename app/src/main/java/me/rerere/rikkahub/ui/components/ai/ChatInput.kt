@@ -196,6 +196,14 @@ fun ChatInput(
             expand = ExpandState.Collapsed
         }
     }
+    
+    // Handle auto-send trigger from voice input
+    LaunchedEffect(state.shouldTriggerAutoSend) {
+        if (state.shouldTriggerAutoSend) {
+            state.shouldTriggerAutoSend = false
+            sendMessage()
+        }
+    }
 
     Surface(
         color = Color.Transparent,
