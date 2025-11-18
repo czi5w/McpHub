@@ -213,7 +213,8 @@ fun ChatInput(
             TextInputRow(
                 state = state,
                 context = context,
-                useServiceCompatibleVoiceButton = useServiceCompatibleVoiceButton
+                useServiceCompatibleVoiceButton = useServiceCompatibleVoiceButton,
+                onAutoSend = { sendMessage() }
             )
 
             // Actions Row
@@ -380,6 +381,7 @@ fun TextInputRow(
     state: ChatInputState,
     context: Context,
     useServiceCompatibleVoiceButton: Boolean = false,
+    onAutoSend: (() -> Unit)? = null,
 ) {
     val assistant = LocalSettings.current.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
@@ -485,9 +487,9 @@ fun TextInputRow(
 
         // 语音输入按钮
         if (useServiceCompatibleVoiceButton) {
-            VoiceInputButtonForService(state, speechService, context)
+            VoiceInputButtonForService(state, speechService, context, onAutoSend)
         } else {
-            VoiceInputButtonWithSpeechService(state, speechService, context)
+            VoiceInputButtonWithSpeechService(state, speechService, context, onAutoSend)
         }
     }
 }
