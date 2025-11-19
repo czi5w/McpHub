@@ -131,6 +131,17 @@ fun VoiceInputButtonWithSpeechService(
             isListening = true
             coroutineScope.launch {
                 try {
+                    // Ensure service is initialized before starting
+                    if (!speechService.isInitialized.value) {
+                        Log.d("VoiceAutoSend", "Speech service not initialized, initializing now")
+                        val initialized = speechService.initialize()
+                        if (!initialized) {
+                            isListening = false
+                            Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                    }
+                    
                     speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
