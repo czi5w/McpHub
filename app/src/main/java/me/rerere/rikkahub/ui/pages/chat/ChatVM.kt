@@ -194,7 +194,7 @@ class ChatVM(
     // 当前模型
     val currentChatModel = settings.map { settings ->
         settings.getCurrentChatModel()
-    }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     // 错误流 (从ChatService获取)
     val errorFlow: SharedFlow<Throwable> = chatService.errorFlow
