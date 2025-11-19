@@ -76,29 +76,29 @@ fun UpdateCard(vm: ChatVM) {
         val current = remember { Version(BuildConfig.VERSION_NAME) }
         val latest = remember(info) { Version(info.version) }
         if (latest > current) {
-            Card(
-                onClick = {
-                    showDetail = true
-                }
-            ) {
-                Column(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "发现新版本 ${info.version}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    MarkdownBlock(
-                        content = info.changelog,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.heightIn(max = 400.dp)
-                    )
-                }
-            }
+//            Card(
+//                onClick = {
+//                    showDetail = true
+//                }
+//            ) {
+//                Column(
+//                    modifier = Modifier
+//                        .padding(8.dp)
+//                        .fillMaxWidth(),
+//                    verticalArrangement = Arrangement.spacedBy(8.dp)
+//                ) {
+//                    Text(
+//                        text = "发现新版本 ${info.version}",
+//                        style = MaterialTheme.typography.titleMedium,
+//                        color = MaterialTheme.colorScheme.primary
+//                    )
+//                    MarkdownBlock(
+//                        content = info.changelog,
+//                        style = MaterialTheme.typography.bodySmall,
+//                        modifier = Modifier.heightIn(max = 400.dp)
+//                    )
+//                }
+//            }  // delete version check
         }
         if (showDetail) {
             val downloadHandler = useThrottle<UpdateDownload>(500) { item ->

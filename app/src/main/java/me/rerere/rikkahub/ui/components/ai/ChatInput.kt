@@ -75,6 +75,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -195,6 +196,25 @@ fun ChatInput(
         if (imeVisile) {
             expand = ExpandState.Collapsed
         }
+    }
+    
+    // Handle auto-send trigger from voice input
+    LaunchedEffect(Unit) {
+        snapshotFlow { state.shouldTriggerAutoSend }
+            .collect { shouldSend ->
+                Log.d("VoiceAutoSend", "shouldTriggerAutoSend changed to: $shouldSend")
+                if (shouldSend) {
+                    state.shouldTriggerAutoSend = false
+                    // Check if a model is selected before auto-sending
+                    val currentModel = settings.getCurrentChatModel()
+                    if (currentModel != null) {
+                        Log.d("VoiceAutoSend", "Executing auto-send")
+                        sendMessage()
+                    } else {
+                        Log.w("VoiceAutoSend", "Auto-send cancelled: no model selected")
+                    }
+                }
+            }
     }
 
     Surface(

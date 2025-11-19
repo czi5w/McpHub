@@ -40,6 +40,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
@@ -65,12 +67,43 @@ fun VoiceInputButtonWithSpeechService(
     }
 
     var isListening by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastVoiceInputText by remember { mutableStateOf("") }
+    var lastUpdateTime by remember { mutableStateOf(0L) }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
+        Log.d("VoiceAutoSend", "Starting recognition result collection")
         launch {
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
+                lastVoiceInputText = result.text
+                
+                Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
+                
+                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                if (result.text.isNotBlank()) {
+                    lastUpdateTime = System.currentTimeMillis()
+                    
+                    // 取消之前的定时器
+                    autoSendJob?.cancel()
+                    
+                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
+                    autoSendJob = launch {
+                        delay(2000)
+                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 2秒后，如果输入框有内容，触发自动发送
+                        if (!state.isEmpty()) {
+                            Log.d("VoiceAutoSend", "Triggering auto-send")
+                            state.shouldTriggerAutoSend = true
+                        }
+                    }
+                }
+                
+                // 如果收到最终结果，也记录一下
+                if (result.isFinal && result.text.isNotBlank()) {
+                    Log.d("VoiceAutoSend", "Final result received")
+                }
             }
         }
         launch {
@@ -82,6 +115,15 @@ fun VoiceInputButtonWithSpeechService(
             }
         }
     }
+    
+    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    LaunchedEffect(state.textContent.text.toString()) {
+        val currentText = state.textContent.text.toString()
+        if (!isListening && currentText != lastVoiceInputText) {
+            autoSendJob?.cancel()
+            autoSendJob = null
+        }
+    }
 
     VoiceInputButton(
         isListening = isListening,
@@ -90,6 +132,17 @@ fun VoiceInputButtonWithSpeechService(
             isListening = true
             coroutineScope.launch {
                 try {
+                    // Ensure service is initialized before starting
+                    if (!speechService.isInitialized.value) {
+                        Log.d("VoiceAutoSend", "Speech service not initialized, initializing now")
+                        val initialized = speechService.initialize()
+                        if (!initialized) {
+                            isListening = false
+                            Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                    }
+                    
                     speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
@@ -130,6 +183,9 @@ fun VoiceInputButtonForService(
     val audioPermission = Manifest.permission.RECORD_AUDIO
 
     var isListening by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastVoiceInputText by remember { mutableStateOf("") }
+    var lastUpdateTime by remember { mutableStateOf(0L) }
     
     // Log permission status on composition
     LaunchedEffect(Unit) {
@@ -143,6 +199,31 @@ fun VoiceInputButtonForService(
             speechService.recognitionResultFlow.collect { result ->
                 Log.d("VoiceInputService", "Received recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 state.textContent.edit { replace(0, length, result.text) }
+                lastVoiceInputText = result.text
+                
+                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                if (result.text.isNotBlank()) {
+                    lastUpdateTime = System.currentTimeMillis()
+                    
+                    // 取消之前的定时器
+                    autoSendJob?.cancel()
+                    
+                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
+                    autoSendJob = launch {
+                        delay(2000)
+                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 2秒后，如果输入框有内容，触发自动发送
+                        if (!state.isEmpty()) {
+                            Log.d("VoiceInputService", "Triggering auto-send")
+                            state.shouldTriggerAutoSend = true
+                        }
+                    }
+                }
+                
+                // 如果收到最终结果，也记录一下
+                if (result.isFinal && result.text.isNotBlank()) {
+                    Log.d("VoiceInputService", "Final result received")
+                }
             }
         }
         launch {
@@ -158,6 +239,16 @@ fun VoiceInputButtonForService(
             speechService.recognitionStateFlow.collect { state ->
                 Log.d("VoiceInputService", "Recognition state changed: $state")
             }
+        }
+    }
+    
+    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    LaunchedEffect(state.textContent.text.toString()) {
+        val currentText = state.textContent.text.toString()
+        if (!isListening && currentText != lastVoiceInputText) {
+            Log.d("VoiceInputService", "Text changed manually, cancelling auto-send timer")
+            autoSendJob?.cancel()
+            autoSendJob = null
         }
     }
 
