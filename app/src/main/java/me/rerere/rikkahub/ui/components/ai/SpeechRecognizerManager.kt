@@ -87,11 +87,11 @@ fun VoiceInputButtonWithSpeechService(
                     // 取消之前的定时器
                     autoSendJob?.cancel()
                     
-                    // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
+                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
                     autoSendJob = launch {
-                        delay(3000)
-                        Log.d("VoiceAutoSend", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 3秒后，如果输入框有内容，触发自动发送
+                        delay(2000)
+                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 2秒后，如果输入框有内容，触发自动发送
                         if (!state.isEmpty()) {
                             Log.d("VoiceAutoSend", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
@@ -196,11 +196,11 @@ fun VoiceInputButtonForService(
                     // 取消之前的定时器
                     autoSendJob?.cancel()
                     
-                    // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
+                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
                     autoSendJob = launch {
-                        delay(3000)
-                        Log.d("VoiceInputService", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 3秒后，如果输入框有内容，触发自动发送
+                        delay(2000)
+                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 2秒后，如果输入框有内容，触发自动发送
                         if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true

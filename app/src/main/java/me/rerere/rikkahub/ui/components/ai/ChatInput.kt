@@ -204,9 +204,15 @@ fun ChatInput(
             .collect { shouldSend ->
                 Log.d("VoiceAutoSend", "shouldTriggerAutoSend changed to: $shouldSend")
                 if (shouldSend) {
-                    Log.d("VoiceAutoSend", "Executing auto-send")
                     state.shouldTriggerAutoSend = false
-                    sendMessage()
+                    // Check if a model is selected before auto-sending
+                    val currentModel = settings.getCurrentChatModel()
+                    if (currentModel != null) {
+                        Log.d("VoiceAutoSend", "Executing auto-send")
+                        sendMessage()
+                    } else {
+                        Log.w("VoiceAutoSend", "Auto-send cancelled: no model selected")
+                    }
                 }
             }
     }
