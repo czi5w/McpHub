@@ -69,6 +69,7 @@ fun VoiceInputButtonWithSpeechService(
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
+    var lastUpdateTime by remember { mutableStateOf(0L) }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
@@ -79,21 +80,28 @@ fun VoiceInputButtonWithSpeechService(
                 
                 Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 
-                // 当收到最终结果时，启动3秒倒计时自动发送
-                if (result.isFinal && result.text.isNotBlank()) {
-                    Log.d("VoiceAutoSend", "Final result received, starting 3-second timer")
+                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                if (result.text.isNotBlank()) {
+                    lastUpdateTime = System.currentTimeMillis()
+                    
                     // 取消之前的定时器
                     autoSendJob?.cancel()
-                    // 启动新的3秒定时器
+                    
+                    // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
                     autoSendJob = launch {
                         delay(3000)
-                        Log.d("VoiceAutoSend", "Timer completed. isEmpty=${state.isEmpty()}")
-                        // 3秒后，如果输入框有内容，触发自动发送
-                        if (!state.isEmpty()) {
+                        Log.d("VoiceAutoSend", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
+                        // 3秒后，如果不在监听状态且输入框有内容，触发自动发送
+                        if (!isListening && !state.isEmpty()) {
                             Log.d("VoiceAutoSend", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
                         }
                     }
+                }
+                
+                // 如果收到最终结果，也记录一下
+                if (result.isFinal && result.text.isNotBlank()) {
+                    Log.d("VoiceAutoSend", "Final result received")
                 }
             }
         }
@@ -165,6 +173,7 @@ fun VoiceInputButtonForService(
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
+    var lastUpdateTime by remember { mutableStateOf(0L) }
     
     // Log permission status on composition
     LaunchedEffect(Unit) {
@@ -180,22 +189,28 @@ fun VoiceInputButtonForService(
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
                 
-                // 当收到最终结果时，启动3秒倒计时自动发送
-                if (result.isFinal && result.text.isNotBlank()) {
-                    Log.d("VoiceInputService", "Final result received, starting 3-second auto-send timer")
+                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                if (result.text.isNotBlank()) {
+                    lastUpdateTime = System.currentTimeMillis()
+                    
                     // 取消之前的定时器
                     autoSendJob?.cancel()
-                    // 启动新的3秒定时器
+                    
+                    // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
                     autoSendJob = launch {
                         delay(3000)
-                        // 3秒后，如果输入框有内容，触发自动发送
-                        if (!state.isEmpty()) {
-                            Log.d("VoiceInputService", "Auto-send timer completed, triggering send")
+                        Log.d("VoiceInputService", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
+                        // 3秒后，如果不在监听状态且输入框有内容，触发自动发送
+                        if (!isListening && !state.isEmpty()) {
+                            Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
-                        } else {
-                            Log.d("VoiceInputService", "Auto-send timer completed, but input is empty")
                         }
                     }
+                }
+                
+                // 如果收到最终结果，也记录一下
+                if (result.isFinal && result.text.isNotBlank()) {
+                    Log.d("VoiceInputService", "Final result received")
                 }
             }
         }
