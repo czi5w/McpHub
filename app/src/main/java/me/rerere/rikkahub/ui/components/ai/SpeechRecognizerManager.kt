@@ -90,9 +90,9 @@ fun VoiceInputButtonWithSpeechService(
                     // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
                     autoSendJob = launch {
                         delay(3000)
-                        Log.d("VoiceAutoSend", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
-                        // 3秒后，如果不在监听状态且输入框有内容，触发自动发送
-                        if (!isListening && !state.isEmpty()) {
+                        Log.d("VoiceAutoSend", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 3秒后，如果输入框有内容，触发自动发送
+                        if (!state.isEmpty()) {
                             Log.d("VoiceAutoSend", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
                         }
@@ -199,9 +199,9 @@ fun VoiceInputButtonForService(
                     // 启动新的3秒定时器（在收到最后一次更新后3秒触发）
                     autoSendJob = launch {
                         delay(3000)
-                        Log.d("VoiceInputService", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
-                        // 3秒后，如果不在监听状态且输入框有内容，触发自动发送
-                        if (!isListening && !state.isEmpty()) {
+                        Log.d("VoiceInputService", "3 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        // 3秒后，如果输入框有内容，触发自动发送
+                        if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
                         }
