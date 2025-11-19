@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,16 +71,8 @@ fun VoiceInputButtonWithSpeechService(
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
 
-    // Observe initialization state to restart flow collection when service is initialized
-    val isServiceInitialized by speechService.isInitialized.collectAsState()
-
-    // 收集识别结果 - restart when service becomes initialized
-    LaunchedEffect(speechService, isServiceInitialized) {
-        if (!isServiceInitialized) {
-            Log.d("VoiceAutoSend", "Waiting for service initialization...")
-            return@LaunchedEffect
-        }
-        
+    // 收集识别结果
+    LaunchedEffect(speechService) {
         Log.d("VoiceAutoSend", "Starting recognition result collection")
         launch {
             speechService.recognitionResultFlow.collect { result ->
