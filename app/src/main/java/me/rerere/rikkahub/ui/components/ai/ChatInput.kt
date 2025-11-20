@@ -101,12 +101,15 @@ import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import com.composables.icons.lucide.ArrowUp
 import com.composables.icons.lucide.Camera
 import com.composables.icons.lucide.Eraser
+import com.composables.icons.lucide.FileAudio
 import com.composables.icons.lucide.Files
 import com.composables.icons.lucide.Fullscreen
 import com.composables.icons.lucide.GraduationCap
 import com.composables.icons.lucide.Image
 import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Music
 import com.composables.icons.lucide.Plus
+import com.composables.icons.lucide.Video
 import com.composables.icons.lucide.X
 import com.composables.icons.lucide.Zap
 import com.dokar.sonner.ToastType
@@ -115,13 +118,15 @@ import com.yalantis.ucrop.UCropActivity
 import me.rerere.ai.provider.Model
 import me.rerere.ai.provider.ModelAbility
 import me.rerere.ai.provider.ModelType
+import me.rerere.ai.provider.ProviderSetting
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.common.android.appTempFolder
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
-import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.ui.KeepScreenOn
@@ -322,7 +327,7 @@ fun ChatInput(
                 }
 
                 // Send Button
-                Box (
+                Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(40.dp)
@@ -338,7 +343,7 @@ fun ChatInput(
                                 sendMessageWithoutAnswer()
                             }
                         )
-                ){
+                ) {
                     val containerColor = when {
                         state.loading -> MaterialTheme.colorScheme.errorContainer // 加载时，红色
                         state.isEmpty() -> MaterialTheme.colorScheme.surfaceContainerHigh // 禁用时(输入为空)，灰色
@@ -357,9 +362,9 @@ fun ChatInput(
                     )
                     if (state.loading) {
                         KeepScreenOn()
-                        Icon(Lucide.X, stringResource(R.string.stop),tint=contentColor)
+                        Icon(Lucide.X, stringResource(R.string.stop), tint = contentColor)
                     } else {
-                        Icon(Lucide.ArrowUp, stringResource(R.string.send),tint=contentColor)
+                        Icon(Lucide.ArrowUp, stringResource(R.string.send), tint = contentColor)
                     }
                 }
             }
@@ -606,6 +611,72 @@ private fun MediaFileInputRow(
                 )
             }
         }
+        state.messageContent.filterIsInstance<UIMessagePart.Video>().fastForEach { video ->
+            Box {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Lucide.Video, null)
+                    }
+                }
+                Icon(
+                    imageVector = Lucide.X,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .size(20.dp)
+                        .clickable {
+                            // Remove image
+                            state.messageContent =
+                                state.messageContent.filterNot { it == video }
+                            // Delete image
+                            context.deleteChatFiles(listOf(video.url.toUri()))
+                        }
+                        .align(Alignment.TopEnd)
+                        .background(MaterialTheme.colorScheme.secondary),
+                    tint = MaterialTheme.colorScheme.onSecondary
+                )
+            }
+        }
+        state.messageContent.filterIsInstance<UIMessagePart.Audio>().fastForEach { audio ->
+            Box {
+                Surface(
+                    modifier = Modifier.size(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    tonalElevation = 4.dp
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Lucide.FileAudio, null)
+                    }
+                }
+                Icon(
+                    imageVector = Lucide.X,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .size(20.dp)
+                        .clickable {
+                            // Remove image
+                            state.messageContent =
+                                state.messageContent.filterNot { it == audio }
+                            // Delete image
+                            context.deleteChatFiles(listOf(audio.url.toUri()))
+                        }
+                        .align(Alignment.TopEnd)
+                        .background(MaterialTheme.colorScheme.secondary),
+                    tint = MaterialTheme.colorScheme.onSecondary
+                )
+            }
+        }
         state.messageContent.filterIsInstance<UIMessagePart.Document>()
             .fastForEach { document ->
                 Box {
@@ -663,6 +734,8 @@ private fun FilesPicker(
     onUpdateAssistant: (Assistant) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val settings = LocalSettings.current
+    val provider = settings.getCurrentChatModel()?.findProvider(providers = settings.providers)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -673,6 +746,7 @@ private fun FilesPicker(
             modifier = Modifier
                 .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             TakePicButton {
                 state.addImages(it)
@@ -682,6 +756,18 @@ private fun FilesPicker(
             ImagePickButton {
                 state.addImages(it)
                 onDismiss()
+            }
+
+            if (provider != null && provider is ProviderSetting.Google) {
+                VideoPickButton {
+                    state.addVideos(it)
+                    onDismiss()
+                }
+
+                AudioPickButton {
+                    state.addAudios(it)
+                    onDismiss()
+                }
             }
 
             FilePickButton {
@@ -982,6 +1068,52 @@ fun TakePicButton(onAddImages: (List<Uri>) -> Unit = {}) {
                 cameraPermission.requestPermissions()
             }
         }
+    }
+}
+
+@Composable
+fun VideoPickButton(onAddVideos: (List<Uri>) -> Unit = {}) {
+    val context = LocalContext.current
+    val videoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { selectedUris ->
+        if (selectedUris.isNotEmpty()) {
+            onAddVideos(context.createChatFilesByContents(selectedUris))
+        }
+    }
+
+    BigIconTextButton(
+        icon = {
+            Icon(Lucide.Video, null)
+        },
+        text = {
+            Text(stringResource(R.string.video))
+        }
+    ) {
+        videoPickerLauncher.launch("video/*")
+    }
+}
+
+@Composable
+fun AudioPickButton(onAddAudios: (List<Uri>) -> Unit = {}) {
+    val context = LocalContext.current
+    val audioPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetMultipleContents()
+    ) { selectedUris ->
+        if (selectedUris.isNotEmpty()) {
+            onAddAudios(context.createChatFilesByContents(selectedUris))
+        }
+    }
+
+    BigIconTextButton(
+        icon = {
+            Icon(Lucide.Music, null)
+        },
+        text = {
+            Text(stringResource(R.string.audio))
+        }
+    ) {
+        audioPickerLauncher.launch("audio/*")
     }
 }
 
