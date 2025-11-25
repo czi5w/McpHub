@@ -276,7 +276,6 @@ private fun ChatPageContent(
             lastPlayedMessageId = lastMessage.id.toString()
         }
     }
-    }
 
     Surface(
         color = MaterialTheme.colorScheme.background,
