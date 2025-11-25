@@ -243,7 +243,9 @@ private fun ChatPageContent(
     // Auto-play TTS when assistant message completes
     val tts = LocalTTSState.current
     val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
-    LaunchedEffect(loadingJob, conversation.currentMessages.size, setting.autoPlayTTS) {
+    var lastPlayedMessageId by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(loadingJob, conversation.currentMessages.lastOrNull()?.id) {
         // Only trigger auto-play when:
         // 1. Auto-play is enabled
         // 2. Generation just completed (loadingJob became null)
@@ -257,8 +259,11 @@ private fun ChatPageContent(
             // Get the last message
             val lastMessage = conversation.currentMessages.lastOrNull()
             
-            // Check if it's an assistant message
-            if (lastMessage != null && lastMessage.role == MessageRole.ASSISTANT) {
+            // Check if it's an assistant message and we haven't played it yet
+            if (lastMessage != null && 
+                lastMessage.role == MessageRole.ASSISTANT &&
+                lastMessage.id.toString() != lastPlayedMessageId
+            ) {
                 // Convert message to text and speak it
                 val messageText = lastMessage.parts
                     .filterIsInstance<UIMessagePart.Text>()
@@ -266,6 +271,7 @@ private fun ChatPageContent(
                 
                 if (messageText.isNotBlank()) {
                     tts.speak(messageText)
+                    lastPlayedMessageId = lastMessage.id.toString()
                 }
             }
         }
