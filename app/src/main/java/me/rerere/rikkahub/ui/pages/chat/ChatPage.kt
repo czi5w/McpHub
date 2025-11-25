@@ -245,36 +245,37 @@ private fun ChatPageContent(
     val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
     var lastPlayedMessageId by remember { mutableStateOf<String?>(null) }
     
-    LaunchedEffect(loadingJob, conversation.currentMessages.lastOrNull()?.id) {
-        // Only trigger auto-play when:
-        // 1. Auto-play is enabled
-        // 2. Generation just completed (loadingJob became null)
-        // 3. Not already speaking
-        // 4. There are messages in the conversation
-        if (setting.autoPlayTTS && 
-            loadingJob == null && 
+    // Track when generation completes
+    LaunchedEffect(loadingJob) {
+        // Only proceed when generation completes (job becomes null)
+        if (loadingJob != null) return@LaunchedEffect
+        
+        // Check if auto-play conditions are met
+        val shouldAutoPlay = setting.autoPlayTTS && 
             !isTTSSpeaking && 
             conversation.currentMessages.isNotEmpty()
-        ) {
-            // Get the last message
-            val lastMessage = conversation.currentMessages.lastOrNull()
-            
-            // Check if it's an assistant message and we haven't played it yet
-            if (lastMessage != null && 
-                lastMessage.role == MessageRole.ASSISTANT &&
-                lastMessage.id.toString() != lastPlayedMessageId
-            ) {
-                // Convert message to text and speak it
-                val messageText = lastMessage.parts
-                    .filterIsInstance<UIMessagePart.Text>()
-                    .joinToString("\n") { it.text }
-                
-                if (messageText.isNotBlank()) {
-                    tts.speak(messageText)
-                    lastPlayedMessageId = lastMessage.id.toString()
-                }
-            }
+        
+        if (!shouldAutoPlay) return@LaunchedEffect
+        
+        // Get the last message
+        val lastMessage = conversation.currentMessages.lastOrNull() ?: return@LaunchedEffect
+        
+        // Check if it's a new assistant message that we haven't played yet
+        val isNewAssistantMessage = lastMessage.role == MessageRole.ASSISTANT &&
+            lastMessage.id.toString() != lastPlayedMessageId
+        
+        if (!isNewAssistantMessage) return@LaunchedEffect
+        
+        // Convert message to text and speak it
+        val messageText = lastMessage.parts
+            .filterIsInstance<UIMessagePart.Text>()
+            .joinToString("\n") { it.text }
+        
+        if (messageText.isNotBlank()) {
+            tts.speak(messageText)
+            lastPlayedMessageId = lastMessage.id.toString()
         }
+    }
     }
 
     Surface(

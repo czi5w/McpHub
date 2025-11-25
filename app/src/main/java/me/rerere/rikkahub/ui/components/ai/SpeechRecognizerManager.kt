@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -44,6 +45,7 @@ import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
@@ -137,7 +139,7 @@ fun VoiceInputButtonWithSpeechService(
         onStartListening = {
             // Don't allow voice input to start if TTS is currently playing
             if (isTTSSpeaking) {
-                Toast.makeText(context, "请等待语音播放完成", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.speech_wait_for_tts_to_finish), Toast.LENGTH_SHORT).show()
                 return@VoiceInputButton
             }
             
@@ -276,7 +278,7 @@ fun VoiceInputButtonForService(
             
             // Don't allow voice input to start if TTS is currently playing
             if (isTTSSpeaking) {
-                Toast.makeText(context, "请等待语音播放完成", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, context.getString(R.string.speech_wait_for_tts_to_finish), Toast.LENGTH_SHORT).show()
                 return@VoiceInputButton
             }
             
