@@ -53,6 +53,7 @@ import com.composables.icons.lucide.X
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.R
@@ -64,6 +65,7 @@ import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.ui.hooks.EditStateContent
@@ -236,6 +238,37 @@ private fun ChatPageContent(
 
     LaunchedEffect(loadingJob) {
         inputState.loading = loadingJob != null
+    }
+
+    // Auto-play TTS when assistant message completes
+    val tts = LocalTTSState.current
+    val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
+    LaunchedEffect(loadingJob, conversation.currentMessages.size, setting.autoPlayTTS) {
+        // Only trigger auto-play when:
+        // 1. Auto-play is enabled
+        // 2. Generation just completed (loadingJob became null)
+        // 3. Not already speaking
+        // 4. There are messages in the conversation
+        if (setting.autoPlayTTS && 
+            loadingJob == null && 
+            !isTTSSpeaking && 
+            conversation.currentMessages.isNotEmpty()
+        ) {
+            // Get the last message
+            val lastMessage = conversation.currentMessages.lastOrNull()
+            
+            // Check if it's an assistant message
+            if (lastMessage != null && lastMessage.role == MessageRole.ASSISTANT) {
+                // Convert message to text and speak it
+                val messageText = lastMessage.parts
+                    .filterIsInstance<UIMessagePart.Text>()
+                    .joinToString("\n") { it.text }
+                
+                if (messageText.isNotBlank()) {
+                    tts.speak(messageText)
+                }
+            }
+        }
     }
 
     Surface(

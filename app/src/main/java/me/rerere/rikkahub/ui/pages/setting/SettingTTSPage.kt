@@ -113,6 +113,41 @@ fun SettingTTSPage(vm: SettingVM = koinViewModel()) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
             state = lazyListState
         ) {
+            // Auto-play TTS toggle
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.setting_tts_page_auto_play),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.setting_tts_page_auto_play_description),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = settings.autoPlayTTS,
+                            onCheckedChange = {
+                                vm.updateSettings(settings.copy(autoPlayTTS = it))
+                            }
+                        )
+                    }
+                }
+            }
+
             items(settings.ttsProviders, key = { it.id }) { provider ->
                 ReorderableItem(
                     state = reorderableState,

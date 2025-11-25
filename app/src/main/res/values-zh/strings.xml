@@ -576,6 +576,8 @@
   <string name="setting_tts_page_api_key_description">您的提供商API密钥</string>
   <string name="setting_tts_page_api_key_placeholder_gemini">AIza...</string>
   <string name="setting_tts_page_api_key_placeholder_openai">sk-...</string>
+  <string name="setting_tts_page_auto_play">自动播放语音</string>
+  <string name="setting_tts_page_auto_play_description">收到回复后自动转为语音播放</string>
   <string name="setting_tts_page_base_url">基础URL</string>
   <string name="setting_tts_page_base_url_description">API基础URL端点</string>
   <string name="setting_tts_page_base_url_placeholder">https://api.openai.com/v1</string>

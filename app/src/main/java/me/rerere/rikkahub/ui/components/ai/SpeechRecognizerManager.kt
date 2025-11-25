@@ -38,11 +38,13 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
@@ -57,6 +59,10 @@ fun VoiceInputButtonWithSpeechService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to check if it's playing
+    val tts = LocalTTSState.current
+    val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -129,6 +135,12 @@ fun VoiceInputButtonWithSpeechService(
         isListening = isListening,
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
+            // Don't allow voice input to start if TTS is currently playing
+            if (isTTSSpeaking) {
+                Toast.makeText(context, "请等待语音播放完成", Toast.LENGTH_SHORT).show()
+                return@VoiceInputButton
+            }
+            
             isListening = true
             coroutineScope.launch {
                 try {
@@ -181,6 +193,10 @@ fun VoiceInputButtonForService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to check if it's playing
+    val tts = LocalTTSState.current
+    val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
 
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
@@ -257,6 +273,13 @@ fun VoiceInputButtonForService(
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
+            
+            // Don't allow voice input to start if TTS is currently playing
+            if (isTTSSpeaking) {
+                Toast.makeText(context, "请等待语音播放完成", Toast.LENGTH_SHORT).show()
+                return@VoiceInputButton
+            }
+            
             val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
             Log.d("VoiceInputService", "Permission check before starting: $hasPermission")
             
