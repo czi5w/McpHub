@@ -71,6 +71,22 @@ fun VoiceInputButtonWithSpeechService(
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastRecognizedText by remember { mutableStateOf("") }
 
+    // Auto-close voice input when AI starts responding
+    LaunchedEffect(state.loading) {
+        if (state.loading && isListening) {
+            // AI is responding, stop voice recognition
+            isListening = false
+            autoSendJob?.cancel()
+            autoSendJob = null
+            lastRecognizedText = ""
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                // Ignore stop recognition errors
+            }
+        }
+    }
+
     // 收集识别结果
     LaunchedEffect(speechService) {
         launch {
