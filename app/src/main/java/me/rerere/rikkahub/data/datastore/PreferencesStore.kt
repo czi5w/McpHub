@@ -390,7 +390,16 @@ fun List<ProviderSetting>.findModelById(uuid: Uuid): Model? {
 }
 
 fun Settings.getCurrentChatModel(): Model? {
-    return findModelById(this.getCurrentAssistant().chatModelId ?: this.chatModelId)
+    // Try to find model by configured ID
+    val modelId = this.getCurrentAssistant().chatModelId ?: this.chatModelId
+    val model = findModelById(modelId)
+    
+    // If not found, fallback to first available model from any provider
+    if (model == null) {
+        return this.providers.firstOrNull()?.models?.firstOrNull()
+    }
+    
+    return model
 }
 
 fun Settings.getCurrentAssistant(): Assistant {
