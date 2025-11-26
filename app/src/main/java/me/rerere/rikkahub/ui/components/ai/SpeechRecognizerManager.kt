@@ -41,13 +41,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
-// 自动发送延迟时间（毫秒）
+// Auto-send delay time in milliseconds (2 seconds)
 private const val AUTO_SEND_DELAY_MS = 2000L
 
 /**
- * 手动控制的语音识别管理器
- * 点击开始录音 → 用户说话 → 再次点击停止
- * 支持自动发送：2秒无新内容时自动发送
+ * Manual voice recognition manager
+ * Click to start recording → user speaks → click again to stop
+ * Supports auto-send: automatically sends after 2 seconds of no new content
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
@@ -77,30 +77,30 @@ fun VoiceInputButtonWithSpeechService(
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
                 
-                // 如果正在监听且有新内容，重置自动发送定时器
+                // If listening and has new content, reset auto-send timer
                 if (isListening && result.text.isNotBlank() && result.text != lastRecognizedText) {
                     lastRecognizedText = result.text
                     
-                    // 取消之前的自动发送任务
+                    // Cancel previous auto-send task
                     autoSendJob?.cancel()
                     
-                    // 启动新的自动发送定时器（2秒后）
+                    // Start new auto-send timer (after 2 seconds)
                     autoSendJob = launch {
                         delay(AUTO_SEND_DELAY_MS)
                         
-                        // 检查条件：监听中、有内容、不在加载状态
+                        // Check conditions: listening, has content, not loading
                         if (isListening && !state.isEmpty() && !state.loading && onAutoSend != null) {
-                            // 更新状态
+                            // Update state
                             isListening = false
                             
-                            // 停止语音识别
+                            // Stop voice recognition
                             try {
                                 speechService.stopRecognition()
                             } catch (e: Exception) {
-                                // 忽略停止识别的错误
+                                // Ignore stop recognition errors
                             }
                             
-                            // 触发自动发送
+                            // Trigger auto-send
                             onAutoSend()
                         }
                     }
@@ -120,7 +120,7 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
     
-    // 当组件销毁时，取消自动发送任务
+    // Cancel auto-send task when component is disposed
     DisposableEffect(Unit) {
         onDispose {
             autoSendJob?.cancel()
@@ -141,7 +141,7 @@ fun VoiceInputButtonWithSpeechService(
                 ) {
                     isListening = !isListening
                     if (isListening) {
-                        // 重置自动发送状态
+                        // Reset auto-send state
                         lastRecognizedText = ""
                         coroutineScope.launch {
                             try {
@@ -159,7 +159,7 @@ fun VoiceInputButtonWithSpeechService(
                             }
                         }
                     } else {
-                        // 手动停止识别，取消自动发送并重置状态
+                        // Manually stop recognition, cancel auto-send and reset state
                         autoSendJob?.cancel()
                         autoSendJob = null
                         lastRecognizedText = ""
