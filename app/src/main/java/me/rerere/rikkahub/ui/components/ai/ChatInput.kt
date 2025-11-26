@@ -164,7 +164,6 @@ fun ChatInput(
     val toaster = LocalToaster.current
     val assistant = settings.getCurrentAssistant()
     val keyboardController = LocalSoftwareKeyboardController.current
-    val currentChatModel = settings.getCurrentChatModel()
 
     fun sendMessage() {
         keyboardController?.hide()
@@ -214,10 +213,7 @@ fun ChatInput(
                 state = state, 
                 context = context, 
                 onAutoSend = {
-                    // Only auto-send if a model is selected
-                    if (currentChatModel != null) {
-                        sendMessage()
-                    }
+                    sendMessage()
                 }
             )
 
