@@ -215,9 +215,9 @@ fun ChatInput(
                 onAutoSend = {
                     // Check if model is available before auto-sending
                     val model = settings.getCurrentChatModel()
-                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.name ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
+                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
                     if (model != null) {
-                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.name}")
+                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.displayName}")
                         sendMessage()
                     } else {
                         android.util.Log.w("ChatInput", "Auto-send skipped: no model available")

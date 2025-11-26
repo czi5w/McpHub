@@ -417,21 +417,21 @@ fun Settings.getCurrentChatModel(): Model? {
             .firstOrNull()?.models?.firstOrNull()
         
         if (enabledProviderModel != null) {
-            android.util.Log.d("Settings", "Using model from enabled provider: ${enabledProviderModel.name}")
+            android.util.Log.d("Settings", "Using model from enabled provider: ${enabledProviderModel.displayName}")
             return enabledProviderModel
         }
         
         // If no enabled provider, try any provider
         val anyModel = this.providers.firstOrNull()?.models?.firstOrNull()
         if (anyModel != null) {
-            android.util.Log.d("Settings", "Using model from any provider: ${anyModel.name}")
+            android.util.Log.d("Settings", "Using model from any provider: ${anyModel.displayName}")
         } else {
             android.util.Log.w("Settings", "No models found in any provider")
         }
         return anyModel
     }
     
-    android.util.Log.d("Settings", "Found model: ${model.name}")
+    android.util.Log.d("Settings", "Found model: ${model.displayName}")
     return model
 }
 
