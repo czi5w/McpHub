@@ -492,9 +492,10 @@ fun TextInputRow(
             context = context,
             onAutoSend = onAutoSend?.let {
                 {
-                    // Check model using fresh settings from LocalSettings
-                    val model = settings.getCurrentChatModel()
-                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
+                    // Check model using fresh settings from LocalSettings - read it fresh each time!
+                    val currentSettings = LocalSettings.current
+                    val model = currentSettings.getCurrentChatModel()
+                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${currentSettings.providers.size}, Enabled: ${currentSettings.providers.count { it.enabled }}")
                     if (model != null) {
                         android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.displayName}")
                         it()
