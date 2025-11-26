@@ -90,10 +90,12 @@ fun VoiceInputButtonWithSpeechService(
                         
                         // 检查条件：监听中、有内容、不在加载状态
                         if (isListening && !state.isEmpty() && !state.loading && onAutoSend != null) {
+                            // 更新状态
+                            isListening = false
+                            
                             // 停止语音识别
                             try {
                                 speechService.stopRecognition()
-                                isListening = false
                             } catch (e: Exception) {
                                 // 忽略停止识别的错误
                             }
@@ -111,6 +113,8 @@ fun VoiceInputButtonWithSpeechService(
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
                     autoSendJob?.cancel()
+                    autoSendJob = null
+                    lastRecognizedText = ""
                 }
             }
         }
