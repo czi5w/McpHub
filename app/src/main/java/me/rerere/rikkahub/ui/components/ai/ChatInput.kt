@@ -213,15 +213,7 @@ fun ChatInput(
                 state = state, 
                 context = context, 
                 onAutoSend = {
-                    // Check if model is available before auto-sending
-                    val model = settings.getCurrentChatModel()
-                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
-                    if (model != null) {
-                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.displayName}")
-                        sendMessage()
-                    } else {
-                        android.util.Log.w("ChatInput", "Auto-send skipped: no model available")
-                    }
+                    sendMessage()
                 }
             )
 
@@ -390,7 +382,8 @@ fun TextInputRow(
     context: Context,
     onAutoSend: (() -> Unit)? = null
 ) {
-    val assistant = LocalSettings.current.getCurrentAssistant()
+    val settings = LocalSettings.current
+    val assistant = settings.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
 
     // 获取语音识别服务单例
@@ -493,7 +486,24 @@ fun TextInputRow(
         Spacer(Modifier.width(8.dp))
 
         // 语音输入按钮
-        VoiceInputButtonWithSpeechService(state, speechService, context, onAutoSend)
+        VoiceInputButtonWithSpeechService(
+            state = state,
+            speechService = speechService,
+            context = context,
+            onAutoSend = onAutoSend?.let {
+                {
+                    // Check model using fresh settings from LocalSettings
+                    val model = settings.getCurrentChatModel()
+                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
+                    if (model != null) {
+                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.displayName}")
+                        it()
+                    } else {
+                        android.util.Log.w("ChatInput", "Auto-send skipped: no model available")
+                    }
+                }
+            }
+        )
     }
 }
 
