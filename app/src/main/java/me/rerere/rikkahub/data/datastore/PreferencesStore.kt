@@ -390,12 +390,27 @@ fun List<ProviderSetting>.findModelById(uuid: Uuid): Model? {
 }
 
 fun Settings.getCurrentChatModel(): Model? {
+    // Check if providers list is empty
+    if (this.providers.isEmpty()) {
+        return null
+    }
+    
     // Try to find model by configured ID
     val modelId = this.getCurrentAssistant().chatModelId ?: this.chatModelId
     val model = findModelById(modelId)
     
-    // If not found, fallback to first available model from any provider
+    // If not found, fallback to first available model from any enabled provider
     if (model == null) {
+        // Try to find first model from enabled providers first
+        val enabledProviderModel = this.providers
+            .filter { it.enabled }
+            .firstOrNull()?.models?.firstOrNull()
+        
+        if (enabledProviderModel != null) {
+            return enabledProviderModel
+        }
+        
+        // If no enabled provider, try any provider
         return this.providers.firstOrNull()?.models?.firstOrNull()
     }
     
