@@ -41,6 +41,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
+// 自动发送延迟时间（毫秒）
+private const val AUTO_SEND_DELAY_MS = 2000L
+
 /**
  * 手动控制的语音识别管理器
  * 点击开始录音 → 用户说话 → 再次点击停止
@@ -83,7 +86,7 @@ fun VoiceInputButtonWithSpeechService(
                     
                     // 启动新的自动发送定时器（2秒后）
                     autoSendJob = launch {
-                        delay(2000) // 2秒延迟
+                        delay(AUTO_SEND_DELAY_MS)
                         
                         // 检查条件：监听中、有内容、不在加载状态
                         if (isListening && !state.isEmpty() && !state.loading && onAutoSend != null) {
@@ -113,14 +116,10 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
     
-    // 当组件销毁或监听状态改变时，取消自动发送任务
-    DisposableEffect(isListening) {
+    // 当组件销毁时，取消自动发送任务
+    DisposableEffect(Unit) {
         onDispose {
-            if (!isListening) {
-                autoSendJob?.cancel()
-                autoSendJob = null
-                lastRecognizedText = ""
-            }
+            autoSendJob?.cancel()
         }
     }
 
@@ -138,6 +137,8 @@ fun VoiceInputButtonWithSpeechService(
                 ) {
                     isListening = !isListening
                     if (isListening) {
+                        // 重置自动发送状态
+                        lastRecognizedText = ""
                         coroutineScope.launch {
                             try {
                                 speechService.startRecognition(
@@ -147,10 +148,17 @@ fun VoiceInputButtonWithSpeechService(
                                 )
                             } catch (e: Exception) {
                                 isListening = false
+                                autoSendJob?.cancel()
+                                autoSendJob = null
+                                lastRecognizedText = ""
                                 Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                             }
                         }
                     } else {
+                        // 手动停止识别，取消自动发送并重置状态
+                        autoSendJob?.cancel()
+                        autoSendJob = null
+                        lastRecognizedText = ""
                         coroutineScope.launch {
                             try {
                                 speechService.stopRecognition()
