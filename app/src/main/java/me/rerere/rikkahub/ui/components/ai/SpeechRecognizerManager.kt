@@ -36,18 +36,25 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
+// Auto-send delay time in milliseconds (2 seconds)
+private const val AUTO_SEND_DELAY_MS = 2000L
+
 /**
- * 手动控制的语音识别管理器
- * 点击开始录音 → 用户说话 → 再次点击停止
+ * Manual voice recognition manager
+ * Click to start recording → user speaks → click again to stop
+ * Supports auto-send: automatically sends after 2 seconds of no new content
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
@@ -61,12 +68,59 @@ fun VoiceInputButtonWithSpeechService(
     }
 
     var isListening by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastRecognizedText by remember { mutableStateOf("") }
+
+    // Auto-close voice input when AI starts responding
+    LaunchedEffect(state.loading) {
+        if (state.loading && isListening) {
+            // AI is responding, stop voice recognition
+            isListening = false
+            autoSendJob?.cancel()
+            autoSendJob = null
+            lastRecognizedText = ""
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                // Ignore stop recognition errors
+            }
+        }
+    }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
+                
+                // If listening and has new content, reset auto-send timer
+                if (isListening && result.text.isNotBlank() && result.text != lastRecognizedText) {
+                    lastRecognizedText = result.text
+                    
+                    // Cancel previous auto-send task
+                    autoSendJob?.cancel()
+                    
+                    // Start new auto-send timer (after 2 seconds)
+                    autoSendJob = launch {
+                        delay(AUTO_SEND_DELAY_MS)
+                        
+                        // Check conditions: listening, has content, not loading
+                        if (isListening && !state.isEmpty() && !state.loading && onAutoSend != null) {
+                            // Update state
+                            isListening = false
+                            
+                            // Stop voice recognition
+                            try {
+                                speechService.stopRecognition()
+                            } catch (e: Exception) {
+                                // Ignore stop recognition errors
+                            }
+                            
+                            // Trigger auto-send
+                            onAutoSend()
+                        }
+                    }
+                }
             }
         }
         launch {
@@ -74,8 +128,18 @@ fun VoiceInputButtonWithSpeechService(
                 if (error.message.isNotBlank()) {
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
+                    autoSendJob?.cancel()
+                    autoSendJob = null
+                    lastRecognizedText = ""
                 }
             }
+        }
+    }
+    
+    // Cancel auto-send task when component is disposed
+    DisposableEffect(Unit) {
+        onDispose {
+            autoSendJob?.cancel()
         }
     }
 
@@ -93,6 +157,8 @@ fun VoiceInputButtonWithSpeechService(
                 ) {
                     isListening = !isListening
                     if (isListening) {
+                        // Reset auto-send state
+                        lastRecognizedText = ""
                         coroutineScope.launch {
                             try {
                                 speechService.startRecognition(
@@ -102,10 +168,17 @@ fun VoiceInputButtonWithSpeechService(
                                 )
                             } catch (e: Exception) {
                                 isListening = false
+                                autoSendJob?.cancel()
+                                autoSendJob = null
+                                lastRecognizedText = ""
                                 Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                             }
                         }
                     } else {
+                        // Manually stop recognition, cancel auto-send and reset state
+                        autoSendJob?.cancel()
+                        autoSendJob = null
+                        lastRecognizedText = ""
                         coroutineScope.launch {
                             try {
                                 speechService.stopRecognition()

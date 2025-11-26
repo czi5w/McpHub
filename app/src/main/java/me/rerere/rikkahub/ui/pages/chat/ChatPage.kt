@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -101,6 +102,9 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>) {
     val loadingJob by vm.conversationJob.collectAsStateWithLifecycle()
     val currentChatModel by vm.currentChatModel.collectAsStateWithLifecycle()
     val enableWebSearch by vm.enableWebSearch.collectAsStateWithLifecycle()
+
+    // Use rememberUpdatedState to always get the latest setting in callbacks
+    val currentSetting by rememberUpdatedState(setting)
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
@@ -272,7 +276,9 @@ private fun ChatPageContent(
                         vm.updateSettings(setting.copy(enableWebSearch = !enableWebSearch))
                     },
                     onSendClick = {
-                        if (currentChatModel == null) {
+                        // Use currentSetting from rememberUpdatedState for always-fresh value
+                        val model = currentSetting.getCurrentChatModel()
+                        if (model == null) {
                             toaster.show("请先选择模型", type = ToastType.Error)
                             return@ChatInput
                         }
@@ -290,6 +296,12 @@ private fun ChatPageContent(
                         inputState.clearInput()
                     },
                     onLongSendClick = {
+                        // Use currentSetting from rememberUpdatedState for always-fresh value
+                        val model = currentSetting.getCurrentChatModel()
+                        if (model == null) {
+                            toaster.show("请先选择模型", type = ToastType.Error)
+                            return@ChatInput
+                        }
                         if (inputState.isEditing()) {
                             vm.handleMessageEdit(
                                 parts = inputState.getContents(),

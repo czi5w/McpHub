@@ -390,7 +390,49 @@ fun List<ProviderSetting>.findModelById(uuid: Uuid): Model? {
 }
 
 fun Settings.getCurrentChatModel(): Model? {
-    return findModelById(this.getCurrentAssistant().chatModelId ?: this.chatModelId)
+    android.util.Log.d("Settings", "getCurrentChatModel called. Providers: ${this.providers.size}, Assistants: ${this.assistants.size}")
+    
+    // Check if providers list is empty
+    if (this.providers.isEmpty()) {
+        android.util.Log.w("Settings", "Providers list is empty")
+        return null
+    }
+    
+    // Try to find model by configured ID
+    val assistant = this.getCurrentAssistant()
+    val modelId = assistant.chatModelId ?: this.chatModelId
+    android.util.Log.d("Settings", "Looking for model ID: $modelId (assistant: ${assistant.chatModelId}, global: ${this.chatModelId})")
+    
+    val model = findModelById(modelId)
+    
+    // If not found, fallback to first available model from any enabled provider
+    if (model == null) {
+        android.util.Log.w("Settings", "Model not found by ID, using fallback")
+        
+        // Try to find first model from enabled providers first
+        val enabledProviders = this.providers.filter { it.enabled }
+        android.util.Log.d("Settings", "Enabled providers: ${enabledProviders.size}")
+        
+        val enabledProviderModel = enabledProviders
+            .firstOrNull()?.models?.firstOrNull()
+        
+        if (enabledProviderModel != null) {
+            android.util.Log.d("Settings", "Using model from enabled provider: ${enabledProviderModel.displayName}")
+            return enabledProviderModel
+        }
+        
+        // If no enabled provider, try any provider
+        val anyModel = this.providers.firstOrNull()?.models?.firstOrNull()
+        if (anyModel != null) {
+            android.util.Log.d("Settings", "Using model from any provider: ${anyModel.displayName}")
+        } else {
+            android.util.Log.w("Settings", "No models found in any provider")
+        }
+        return anyModel
+    }
+    
+    android.util.Log.d("Settings", "Found model: ${model.displayName}")
+    return model
 }
 
 fun Settings.getCurrentAssistant(): Assistant {

@@ -74,6 +74,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -209,7 +210,13 @@ fun ChatInput(
             MediaFileInputRow(state = state, context = context)
 
             // Text Input Row
-            TextInputRow(state = state, context = context)
+            TextInputRow(
+                state = state, 
+                context = context, 
+                onAutoSend = {
+                    sendMessage()
+                }
+            )
 
             // Actions Row
             Row(
@@ -374,9 +381,14 @@ fun ChatInput(
 fun TextInputRow(
     state: ChatInputState,
     context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
-    val assistant = LocalSettings.current.getCurrentAssistant()
+    val settings = LocalSettings.current
+    val assistant = settings.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
+    
+    // Use rememberUpdatedState to always get the latest settings in callbacks
+    val currentSettings by rememberUpdatedState(settings)
 
     // 获取语音识别服务单例
     val speechService = remember { SpeechServiceFactory.getInstance(context) }
@@ -478,7 +490,24 @@ fun TextInputRow(
         Spacer(Modifier.width(8.dp))
 
         // 语音输入按钮
-        VoiceInputButtonWithSpeechService(state, speechService, context)
+        VoiceInputButtonWithSpeechService(
+            state = state,
+            speechService = speechService,
+            context = context,
+            onAutoSend = onAutoSend?.let {
+                {
+                    // Use currentSettings from rememberUpdatedState - always has latest value
+                    val model = currentSettings.getCurrentChatModel()
+                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${currentSettings.providers.size}, Enabled: ${currentSettings.providers.count { it.enabled }}")
+                    if (model != null) {
+                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.displayName}")
+                        it()
+                    } else {
+                        android.util.Log.w("ChatInput", "Auto-send skipped: no model available")
+                    }
+                }
+            }
+        )
     }
 }
 
