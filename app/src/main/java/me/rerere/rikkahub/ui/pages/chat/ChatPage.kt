@@ -272,7 +272,9 @@ private fun ChatPageContent(
                         vm.updateSettings(setting.copy(enableWebSearch = !enableWebSearch))
                     },
                     onSendClick = {
-                        if (currentChatModel == null) {
+                        // Check model using settings directly to avoid StateFlow staleness
+                        val model = setting.getCurrentChatModel()
+                        if (model == null) {
                             toaster.show("请先选择模型", type = ToastType.Error)
                             return@ChatInput
                         }
@@ -290,6 +292,12 @@ private fun ChatPageContent(
                         inputState.clearInput()
                     },
                     onLongSendClick = {
+                        // Check model using settings directly to avoid StateFlow staleness
+                        val model = setting.getCurrentChatModel()
+                        if (model == null) {
+                            toaster.show("请先选择模型", type = ToastType.Error)
+                            return@ChatInput
+                        }
                         if (inputState.isEditing()) {
                             vm.handleMessageEdit(
                                 parts = inputState.getContents(),
