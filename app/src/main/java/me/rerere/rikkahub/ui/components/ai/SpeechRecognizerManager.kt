@@ -36,18 +36,22 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
  * 手动控制的语音识别管理器
  * 点击开始录音 → 用户说话 → 再次点击停止
+ * 支持自动发送：2秒无新内容时自动发送
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
@@ -61,12 +65,41 @@ fun VoiceInputButtonWithSpeechService(
     }
 
     var isListening by remember { mutableStateOf(false) }
+    var autoSendJob by remember { mutableStateOf<Job?>(null) }
+    var lastRecognizedText by remember { mutableStateOf("") }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
+                
+                // 如果正在监听且有新内容，重置自动发送定时器
+                if (isListening && result.text.isNotBlank() && result.text != lastRecognizedText) {
+                    lastRecognizedText = result.text
+                    
+                    // 取消之前的自动发送任务
+                    autoSendJob?.cancel()
+                    
+                    // 启动新的自动发送定时器（2秒后）
+                    autoSendJob = launch {
+                        delay(2000) // 2秒延迟
+                        
+                        // 检查条件：监听中、有内容、不在加载状态
+                        if (isListening && !state.isEmpty() && !state.loading && onAutoSend != null) {
+                            // 停止语音识别
+                            try {
+                                speechService.stopRecognition()
+                                isListening = false
+                            } catch (e: Exception) {
+                                // 忽略停止识别的错误
+                            }
+                            
+                            // 触发自动发送
+                            onAutoSend()
+                        }
+                    }
+                }
             }
         }
         launch {
@@ -74,7 +107,19 @@ fun VoiceInputButtonWithSpeechService(
                 if (error.message.isNotBlank()) {
                     Toast.makeText(context, "识别错误: ${error.message}", Toast.LENGTH_SHORT).show()
                     isListening = false
+                    autoSendJob?.cancel()
                 }
+            }
+        }
+    }
+    
+    // 当组件销毁或监听状态改变时，取消自动发送任务
+    DisposableEffect(isListening) {
+        onDispose {
+            if (!isListening) {
+                autoSendJob?.cancel()
+                autoSendJob = null
+                lastRecognizedText = ""
             }
         }
     }

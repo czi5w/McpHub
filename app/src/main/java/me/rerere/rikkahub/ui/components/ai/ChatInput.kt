@@ -209,7 +209,13 @@ fun ChatInput(
             MediaFileInputRow(state = state, context = context)
 
             // Text Input Row
-            TextInputRow(state = state, context = context)
+            TextInputRow(
+                state = state, 
+                context = context, 
+                onAutoSend = {
+                    sendMessage()
+                }
+            )
 
             // Actions Row
             Row(
@@ -374,6 +380,7 @@ fun ChatInput(
 fun TextInputRow(
     state: ChatInputState,
     context: Context,
+    onAutoSend: (() -> Unit)? = null
 ) {
     val assistant = LocalSettings.current.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
@@ -478,7 +485,7 @@ fun TextInputRow(
         Spacer(Modifier.width(8.dp))
 
         // 语音输入按钮
-        VoiceInputButtonWithSpeechService(state, speechService, context)
+        VoiceInputButtonWithSpeechService(state, speechService, context, onAutoSend)
     }
 }
 
