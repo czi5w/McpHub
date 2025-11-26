@@ -66,16 +66,6 @@
       android:name="com.yalantis.ucrop.UCropActivity"
       android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 
-    <service
-      android:name=".service.FloatingWindowService"
-      android:enabled="true"
-      android:exported="false"
-      android:foregroundServiceType="specialUse|microphone">
-      <property
-        android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-        android:value="Floating chat window with voice recognition" />
-    </service>
-
     <provider
       android:name="androidx.core.content.FileProvider"
       android:authorities="${applicationId}.fileprovider"

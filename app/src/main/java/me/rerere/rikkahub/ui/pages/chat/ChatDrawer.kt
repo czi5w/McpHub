@@ -1,8 +1,5 @@
 package me.rerere.rikkahub.ui.pages.chat
 
-import android.content.Intent
-import android.os.Build
-import android.provider.Settings as AndroidSettings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,13 +29,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.composables.icons.lucide.Drama
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Minimize2
 import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Settings
 import com.composables.icons.lucide.Sparkles
@@ -49,7 +44,6 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.repository.ConversationRepository
-import me.rerere.rikkahub.service.FloatingWindowService
 import me.rerere.rikkahub.ui.components.ai.AssistantPicker
 import me.rerere.rikkahub.ui.components.ui.Greeting
 import me.rerere.rikkahub.ui.components.ui.Tooltip
@@ -252,36 +246,6 @@ fun ChatDrawerContent(
                     onClick = {
                         navController.navigate(Screen.Setting)
                     },
-                )
-                
-                DrawerAction(
-                    icon = {
-                        Icon(Lucide.Minimize2, null)
-                    },
-                    label = { Text("浮窗") },
-                    onClick = {
-                        // Check permission and start floating window service
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                            if (AndroidSettings.canDrawOverlays(context)) {
-                                val intent = Intent(context, FloatingWindowService::class.java)
-                                ContextCompat.startForegroundService(context, intent)
-                                // Close the activity
-                                (context as? android.app.Activity)?.finish()
-                            } else {
-                                // Request permission
-                                val intent = Intent(
-                                    AndroidSettings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                    android.net.Uri.parse("package:${context.packageName}")
-                                )
-                                context.startActivity(intent)
-                            }
-                        } else {
-                            val intent = Intent(context, FloatingWindowService::class.java)
-                            context.startService(intent)
-                            (context as? android.app.Activity)?.finish()
-                        }
-                    },
-                    modifier = Modifier.weight(1f)
                 )
             }
         }
