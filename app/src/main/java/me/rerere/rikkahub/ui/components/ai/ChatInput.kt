@@ -213,7 +213,12 @@ fun ChatInput(
                 state = state, 
                 context = context, 
                 onAutoSend = {
-                    sendMessage()
+                    // Check if model is available before auto-sending
+                    // Silently skip auto-send if no model (avoid popup during voice input)
+                    val model = settings.getCurrentChatModel()
+                    if (model != null) {
+                        sendMessage()
+                    }
                 }
             )
 
