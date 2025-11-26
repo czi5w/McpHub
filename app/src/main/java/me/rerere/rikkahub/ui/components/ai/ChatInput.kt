@@ -385,6 +385,9 @@ fun TextInputRow(
     val settings = LocalSettings.current
     val assistant = settings.getCurrentAssistant()
     val coroutineScope = rememberCoroutineScope()
+    
+    // Use rememberUpdatedState to always get the latest settings in callbacks
+    val currentSettings by rememberUpdatedState(settings)
 
     // 获取语音识别服务单例
     val speechService = remember { SpeechServiceFactory.getInstance(context) }
@@ -492,8 +495,7 @@ fun TextInputRow(
             context = context,
             onAutoSend = onAutoSend?.let {
                 {
-                    // Check model using fresh settings from LocalSettings - read it fresh each time!
-                    val currentSettings = LocalSettings.current
+                    // Use currentSettings from rememberUpdatedState - always has latest value
                     val model = currentSettings.getCurrentChatModel()
                     android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.displayName ?: "null"}, Providers: ${currentSettings.providers.size}, Enabled: ${currentSettings.providers.count { it.enabled }}")
                     if (model != null) {
