@@ -214,10 +214,13 @@ fun ChatInput(
                 context = context, 
                 onAutoSend = {
                     // Check if model is available before auto-sending
-                    // Silently skip auto-send if no model (avoid popup during voice input)
                     val model = settings.getCurrentChatModel()
+                    android.util.Log.d("ChatInput", "Auto-send triggered. Model: ${model?.name ?: "null"}, Providers: ${settings.providers.size}, Enabled: ${settings.providers.count { it.enabled }}")
                     if (model != null) {
+                        android.util.Log.d("ChatInput", "Auto-sending message with model: ${model.name}")
                         sendMessage()
+                    } else {
+                        android.util.Log.w("ChatInput", "Auto-send skipped: no model available")
                     }
                 }
             )

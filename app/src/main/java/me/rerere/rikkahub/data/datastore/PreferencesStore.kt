@@ -390,30 +390,48 @@ fun List<ProviderSetting>.findModelById(uuid: Uuid): Model? {
 }
 
 fun Settings.getCurrentChatModel(): Model? {
+    android.util.Log.d("Settings", "getCurrentChatModel called. Providers: ${this.providers.size}, Assistants: ${this.assistants.size}")
+    
     // Check if providers list is empty
     if (this.providers.isEmpty()) {
+        android.util.Log.w("Settings", "Providers list is empty")
         return null
     }
     
     // Try to find model by configured ID
-    val modelId = this.getCurrentAssistant().chatModelId ?: this.chatModelId
+    val assistant = this.getCurrentAssistant()
+    val modelId = assistant.chatModelId ?: this.chatModelId
+    android.util.Log.d("Settings", "Looking for model ID: $modelId (assistant: ${assistant.chatModelId}, global: ${this.chatModelId})")
+    
     val model = findModelById(modelId)
     
     // If not found, fallback to first available model from any enabled provider
     if (model == null) {
+        android.util.Log.w("Settings", "Model not found by ID, using fallback")
+        
         // Try to find first model from enabled providers first
-        val enabledProviderModel = this.providers
-            .filter { it.enabled }
+        val enabledProviders = this.providers.filter { it.enabled }
+        android.util.Log.d("Settings", "Enabled providers: ${enabledProviders.size}")
+        
+        val enabledProviderModel = enabledProviders
             .firstOrNull()?.models?.firstOrNull()
         
         if (enabledProviderModel != null) {
+            android.util.Log.d("Settings", "Using model from enabled provider: ${enabledProviderModel.name}")
             return enabledProviderModel
         }
         
         // If no enabled provider, try any provider
-        return this.providers.firstOrNull()?.models?.firstOrNull()
+        val anyModel = this.providers.firstOrNull()?.models?.firstOrNull()
+        if (anyModel != null) {
+            android.util.Log.d("Settings", "Using model from any provider: ${anyModel.name}")
+        } else {
+            android.util.Log.w("Settings", "No models found in any provider")
+        }
+        return anyModel
     }
     
+    android.util.Log.d("Settings", "Found model: ${model.name}")
     return model
 }
 
