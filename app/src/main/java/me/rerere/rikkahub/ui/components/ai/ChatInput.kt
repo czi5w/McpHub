@@ -159,6 +159,7 @@ fun ChatInput(
     onToggleSearch: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     useServiceCompatibleVoiceButton: Boolean = false,
+    currentChatModel: Model? = null,
     onUpdateChatModel: (Model) -> Unit,
     onUpdateAssistant: (Assistant) -> Unit,
     onUpdateSearchService: (Int) -> Unit,
@@ -211,9 +212,11 @@ fun ChatInput(
                 if (shouldSend) {
                     state.shouldTriggerAutoSend = false
                     // Check if a model is selected before auto-sending
-                    val currentModel = settings.getCurrentChatModel()
-                    if (currentModel != null) {
-                        Log.d("VoiceAutoSend", "Executing auto-send")
+                    // Use currentChatModel parameter (from ViewModel's reactive StateFlow) instead of settings
+                    val modelToUse = currentChatModel ?: settings.getCurrentChatModel()
+                    Log.d("VoiceAutoSend", "Current model check: currentChatModel=${currentChatModel?.displayName}, from settings=${settings.getCurrentChatModel()?.displayName}")
+                    if (modelToUse != null) {
+                        Log.d("VoiceAutoSend", "Executing auto-send with model: ${modelToUse.displayName}")
                         sendMessage()
                     } else {
                         Log.w("VoiceAutoSend", "Auto-send cancelled: no model selected")

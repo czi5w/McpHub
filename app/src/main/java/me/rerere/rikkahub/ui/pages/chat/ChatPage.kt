@@ -268,6 +268,7 @@ private fun ChatPageContent(
                     settings = setting,
                     conversation = conversation,
                     mcpManager = vm.mcpManager,
+                    currentChatModel = currentChatModel,
                     onCancelClick = {
                         loadingJob?.cancel()
                     },
