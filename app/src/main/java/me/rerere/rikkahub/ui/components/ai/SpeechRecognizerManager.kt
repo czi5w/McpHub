@@ -46,6 +46,26 @@ import kotlinx.coroutines.launch
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
+ * Shared effect to monitor loading state and stop voice recognition when AI starts responding
+ */
+@Composable
+private fun MonitorLoadingStateEffect(
+    loading: Boolean,
+    isListening: Boolean,
+    onStopListening: () -> Unit,
+    onCancelAutoSend: () -> Unit,
+    tag: String
+) {
+    LaunchedEffect(loading) {
+        if (loading && isListening) {
+            Log.d(tag, "AI is responding, stopping voice recognition")
+            onCancelAutoSend()
+            onStopListening()
+        }
+    }
+}
+
+/**
  * 手动控制的语音识别管理器
  * 点击开始录音 → 用户说话 → 再次点击停止
  */
@@ -71,22 +91,28 @@ fun VoiceInputButtonWithSpeechService(
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
     
-    // 监听loading状态变化，当AI开始响应时自动停止语音识别
-    LaunchedEffect(state.loading) {
-        if (state.loading && isListening) {
-            Log.d("VoiceAutoSend", "AI is responding, stopping voice recognition")
+    // Monitor loading state changes - stop voice recognition when AI starts responding
+    MonitorLoadingStateEffect(
+        loading = state.loading,
+        isListening = isListening,
+        onStopListening = {
             isListening = false
+            coroutineScope.launch {
+                try {
+                    speechService.stopRecognition()
+                } catch (e: Exception) {
+                    Log.e("VoiceAutoSend", "Error stopping recognition when AI starts responding", e)
+                }
+            }
+        },
+        onCancelAutoSend = {
             autoSendJob?.cancel()
             autoSendJob = null
-            try {
-                speechService.stopRecognition()
-            } catch (e: Exception) {
-                Log.e("VoiceAutoSend", "Error stopping recognition when AI starts responding", e)
-            }
-        }
-    }
+        },
+        tag = "VoiceAutoSend"
+    )
 
-    // 收集识别结果
+    // Collect recognition results
     LaunchedEffect(speechService) {
         Log.d("VoiceAutoSend", "Starting recognition result collection")
         launch {
@@ -96,18 +122,18 @@ fun VoiceInputButtonWithSpeechService(
                 
                 Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 
-                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
                     
-                    // 取消之前的定时器
+                    // Cancel previous timer
                     autoSendJob?.cancel()
                     
-                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
+                    // Start new 2-second timer (triggers 2 seconds after last update)
                     autoSendJob = launch {
                         delay(2000)
                         Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 2秒后，如果输入框有内容，触发自动发送
+                        // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceAutoSend", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
@@ -115,7 +141,7 @@ fun VoiceInputButtonWithSpeechService(
                     }
                 }
                 
-                // 如果收到最终结果，也记录一下
+                // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceAutoSend", "Final result received")
                 }
@@ -131,7 +157,7 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
     
-    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
         if (!isListening && currentText != lastVoiceInputText) {
@@ -142,7 +168,7 @@ fun VoiceInputButtonWithSpeechService(
 
     VoiceInputButton(
         isListening = isListening,
-        isEnabled = !state.loading, // 禁用语音输入当AI正在响应时
+        isEnabled = !state.loading, // Disable voice input when AI is responding
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             isListening = true
@@ -209,22 +235,28 @@ fun VoiceInputButtonForService(
         Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
     }
     
-    // 监听loading状态变化，当AI开始响应时自动停止语音识别
-    LaunchedEffect(state.loading) {
-        if (state.loading && isListening) {
-            Log.d("VoiceInputService", "AI is responding, stopping voice recognition")
+    // Monitor loading state changes - stop voice recognition when AI starts responding
+    MonitorLoadingStateEffect(
+        loading = state.loading,
+        isListening = isListening,
+        onStopListening = {
             isListening = false
+            coroutineScope.launch {
+                try {
+                    speechService.stopRecognition()
+                } catch (e: Exception) {
+                    Log.e("VoiceInputService", "Error stopping recognition when AI starts responding", e)
+                }
+            }
+        },
+        onCancelAutoSend = {
             autoSendJob?.cancel()
             autoSendJob = null
-            try {
-                speechService.stopRecognition()
-            } catch (e: Exception) {
-                Log.e("VoiceInputService", "Error stopping recognition when AI starts responding", e)
-            }
-        }
-    }
+        },
+        tag = "VoiceInputService"
+    )
 
-    // 收集识别结果
+    // Collect recognition results
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
@@ -232,18 +264,18 @@ fun VoiceInputButtonForService(
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
                 
-                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
                     
-                    // 取消之前的定时器
+                    // Cancel previous timer
                     autoSendJob?.cancel()
                     
-                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
+                    // Start new 2-second timer (triggers 2 seconds after last update)
                     autoSendJob = launch {
                         delay(2000)
                         Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 2秒后，如果输入框有内容，触发自动发送
+                        // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
@@ -251,7 +283,7 @@ fun VoiceInputButtonForService(
                     }
                 }
                 
-                // 如果收到最终结果，也记录一下
+                // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceInputService", "Final result received")
                 }
@@ -273,7 +305,7 @@ fun VoiceInputButtonForService(
         }
     }
     
-    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
         if (!isListening && currentText != lastVoiceInputText) {
@@ -285,7 +317,7 @@ fun VoiceInputButtonForService(
 
     VoiceInputButton(
         isListening = isListening,
-        isEnabled = !state.loading, // 禁用语音输入当AI正在响应时
+        isEnabled = !state.loading, // Disable voice input when AI is responding
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
