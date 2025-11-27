@@ -53,6 +53,7 @@ import com.composables.icons.lucide.X
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.R
@@ -64,6 +65,7 @@ import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.ui.hooks.EditStateContent
@@ -236,6 +238,43 @@ private fun ChatPageContent(
 
     LaunchedEffect(loadingJob) {
         inputState.loading = loadingJob != null
+    }
+
+    // Auto-play TTS when assistant message completes
+    val tts = LocalTTSState.current
+    val isTTSSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
+    var lastPlayedMessageId by remember { mutableStateOf<String?>(null) }
+    
+    // Track when generation completes
+    LaunchedEffect(loadingJob) {
+        // Only proceed when generation completes (job becomes null)
+        if (loadingJob != null) return@LaunchedEffect
+        
+        // Check if auto-play conditions are met
+        val shouldAutoPlay = setting.autoPlayTTS && 
+            !isTTSSpeaking && 
+            conversation.currentMessages.isNotEmpty()
+        
+        if (!shouldAutoPlay) return@LaunchedEffect
+        
+        // Get the last message
+        val lastMessage = conversation.currentMessages.lastOrNull() ?: return@LaunchedEffect
+        
+        // Check if it's a new assistant message that we haven't played yet
+        val isNewAssistantMessage = lastMessage.role == MessageRole.ASSISTANT &&
+            lastMessage.id.toString() != lastPlayedMessageId
+        
+        if (!isNewAssistantMessage) return@LaunchedEffect
+        
+        // Convert message to text and speak it
+        val messageText = lastMessage.parts
+            .filterIsInstance<UIMessagePart.Text>()
+            .joinToString("\n") { it.text }
+        
+        if (messageText.isNotBlank()) {
+            tts.speak(messageText)
+            lastPlayedMessageId = lastMessage.id.toString()
+        }
     }
 
     Surface(

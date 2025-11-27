@@ -474,6 +474,8 @@
   <string name="setting_tts_page_title">Text-to-Speech</string>
   <string name="setting_tts_page_add_provider">Add TTS Provider</string>
   <string name="setting_tts_page_add">Add</string>
+  <string name="setting_tts_page_auto_play">Auto-play voice</string>
+  <string name="setting_tts_page_auto_play_description">Automatically convert replies to speech and play</string>
   <string name="setting_tts_page_enabled">Enabled</string>
   <string name="setting_tts_page_disabled">Disabled</string>
   <string name="setting_tts_page_provider_type">Provider Type</string>
@@ -523,6 +525,7 @@
   <string name="setting_tts_page_emotion">Emotion</string>
   <string name="setting_tts_page_emotion_description">Emotion style for speech synthesis</string>
   <string name="setting_tts_page_emotion_placeholder">happy</string>
+  <string name="speech_wait_for_tts_to_finish">Please wait for voice playback to finish</string>
 
   <!-- Chat Message Tool Calls -->
   <string name="chat_message_tool_create_memory">Created memory</string>

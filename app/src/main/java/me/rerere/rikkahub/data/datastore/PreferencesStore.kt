@@ -101,6 +101,7 @@ class SettingsStore(
         // TTS
         val TTS_PROVIDERS = stringPreferencesKey("tts_providers")
         val SELECTED_TTS_PROVIDER = stringPreferencesKey("selected_tts_provider")
+        val AUTO_PLAY_TTS = booleanPreferencesKey("auto_play_tts")
     }
 
     private val dataStore = context.settingsStore
@@ -162,6 +163,7 @@ class SettingsStore(
                 } ?: emptyList(),
                 selectedTTSProviderId = preferences[SELECTED_TTS_PROVIDER]?.let { Uuid.parse(it) }
                     ?: DEFAULT_SYSTEM_TTS_ID,
+                autoPlayTTS = preferences[AUTO_PLAY_TTS] ?: false,
             )
         }
         .map {
@@ -282,6 +284,7 @@ class SettingsStore(
             settings.selectedTTSProviderId?.let {
                 preferences[SELECTED_TTS_PROVIDER] = it.toString()
             } ?: preferences.remove(SELECTED_TTS_PROVIDER)
+            preferences[AUTO_PLAY_TTS] = settings.autoPlayTTS
         }
     }
 
@@ -327,7 +330,8 @@ data class Settings(
     val mcpServers: List<McpServerConfig> = emptyList(),
     val webDavConfig: WebDavConfig = WebDavConfig(),
     val ttsProviders: List<TTSProviderSetting> = DEFAULT_TTS_PROVIDERS,
-    val selectedTTSProviderId: Uuid = DEFAULT_SYSTEM_TTS_ID
+    val selectedTTSProviderId: Uuid = DEFAULT_SYSTEM_TTS_ID,
+    val autoPlayTTS: Boolean = false
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储
