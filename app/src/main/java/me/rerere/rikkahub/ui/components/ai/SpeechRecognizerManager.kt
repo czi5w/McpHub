@@ -43,6 +43,8 @@ import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
@@ -75,6 +77,7 @@ fun VoiceInputButtonWithSpeechService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    val settings = LocalSettings.current
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -175,6 +178,15 @@ fun VoiceInputButtonWithSpeechService(
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceAutoSend", "User clicked start button")
+            
+            // Check if a model is selected before starting voice recognition
+            val currentModel = settings.getCurrentChatModel()
+            if (currentModel == null) {
+                Log.w("VoiceAutoSend", "Cannot start voice recognition: no model selected")
+                Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
+                return@VoiceInputButton
+            }
+            
             isListening = true
             coroutineScope.launch {
                 try {
@@ -191,7 +203,7 @@ fun VoiceInputButtonWithSpeechService(
                         Log.d("VoiceAutoSend", "Speech service initialized successfully")
                     }
                     
-                    Log.d("VoiceAutoSend", "Starting speech recognition")
+                    Log.d("VoiceAutoSend", "Starting speech recognition with model: ${currentModel.displayName}")
                     speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
@@ -235,6 +247,7 @@ fun VoiceInputButtonForService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    val settings = LocalSettings.current
 
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
@@ -347,6 +360,14 @@ fun VoiceInputButtonForService(
                 return@VoiceInputButton
             }
             
+            // Check if a model is selected before starting voice recognition
+            val currentModel = settings.getCurrentChatModel()
+            if (currentModel == null) {
+                Log.w("VoiceInputService", "Cannot start voice recognition: no model selected")
+                Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
+                return@VoiceInputButton
+            }
+            
             isListening = true
             coroutineScope.launch {
                 try {
@@ -363,7 +384,7 @@ fun VoiceInputButtonForService(
                         }
                     }
                     
-                    Log.d("VoiceInputService", "Calling speechService.startRecognition")
+                    Log.d("VoiceInputService", "Calling speechService.startRecognition with model: ${currentModel.displayName}")
                     val started = speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
