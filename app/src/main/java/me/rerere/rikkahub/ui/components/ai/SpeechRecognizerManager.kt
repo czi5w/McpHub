@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.Settings
+import android.provider.Settings as AndroidSettings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -43,6 +43,7 @@ import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.ui.context.LocalSettings
 import me.rerere.rikkahub.ui.hooks.ChatInputState
@@ -73,11 +74,11 @@ private fun MonitorLoadingStateEffect(
 fun VoiceInputButtonWithSpeechService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    settings: Settings
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
-    val settings = LocalSettings.current
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -243,11 +244,11 @@ fun VoiceInputButtonWithSpeechService(
 fun VoiceInputButtonForService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    settings: Settings
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
-    val settings = LocalSettings.current
 
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
@@ -420,7 +421,7 @@ fun VoiceInputButtonForService(
             Log.d("VoiceInputService", "onRequestPermission called - opening app settings")
             // In Service context, open app settings page for user to manually grant permission
             try {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                val intent = Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", context.packageName, null)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
