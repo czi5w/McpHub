@@ -1,14 +1,8 @@
 package me.rerere.rikkahub.ui.components.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,70 +48,63 @@ fun TTSController() {
 
     LaunchedEffect(isSpeaking) {
         if (isSpeaking) {
-            // 显示 TTS 控制器
+            // 如果开启，显示悬浮窗
             isVisible = true
         }
     }
 
-    // 使用标准定位的 UI 而不是浮窗
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.BottomStart
+    FloatingWindow(
+        tag = "tts_controller",
+        visibility = isVisible
     ) {
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+        val playbackState by ttsState.playbackState.collectAsState()
+        var expand by remember { mutableStateOf(false) }
+        Surface(
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 4.dp,
+            modifier = Modifier.padding(8.dp),
+            shadowElevation = 4.dp,
         ) {
-            val playbackState by ttsState.playbackState.collectAsState()
-            var expand by remember { mutableStateOf(false) }
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 4.dp,
-                modifier = Modifier.padding(16.dp),
-                shadowElevation = 4.dp,
+            Row(
+                modifier = Modifier.padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
-                    modifier = Modifier.padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                PlayPauseButton(playbackState = playbackState, ttsState = ttsState)
+
+                IconButton(
+                    onClick = {
+                        ttsState.stop()
+                        isVisible = false
+                    }
                 ) {
-                    PlayPauseButton(playbackState = playbackState, ttsState = ttsState)
+                    Icon(
+                        imageVector = Lucide.X,
+                        contentDescription = null,
+                    )
+                }
 
-                    IconButton(
-                        onClick = {
-                            ttsState.stop()
-                            isVisible = false
-                        }
+                AnimatedVisibility(expand) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(
-                            imageVector = Lucide.X,
-                            contentDescription = null,
-                        )
-                    }
+                        SpeedButton(playbackState, ttsState)
 
-                    AnimatedVisibility(expand) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            SpeedButton(playbackState, ttsState)
-
-                            FastForwardButton(ttsState = ttsState)
-                        }
+                        FastForwardButton(ttsState = ttsState)
                     }
+                }
 
-                    IconButton(
-                        onClick = {
-                            expand = !expand
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (expand) Lucide.ChevronLeft else Lucide.ChevronRight,
-                            contentDescription = null,
-                        )
+                IconButton(
+                    onClick = {
+                        expand = !expand
                     }
+                ) {
+                    Icon(
+                        imageVector = if (expand) Lucide.ChevronLeft else Lucide.ChevronRight,
+                        contentDescription = null,
+                    )
                 }
             }
         }
