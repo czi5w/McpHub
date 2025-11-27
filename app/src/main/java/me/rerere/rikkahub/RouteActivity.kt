@@ -1,5 +1,6 @@
 package me.rerere.rikkahub
 
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -91,7 +92,7 @@ class RouteActivity : ComponentActivity() {
         enableEdgeToEdge()
         disableNavigationBarContrast()
         super.onCreate(savedInstanceState)
-        
+
         setContent {
             val navStack = rememberNavController()
             this.navStack = navStack
@@ -126,7 +127,7 @@ class RouteActivity : ComponentActivity() {
                 putExtra(Intent.EXTRA_STREAM, intent?.getStringExtra(Intent.EXTRA_STREAM))
             }
         }
-        
+
         val destination = remember { intent?.getStringExtra("destination") }
 
         LaunchedEffect(navBackStack) {
