@@ -66,8 +66,8 @@ private fun MonitorLoadingStateEffect(
 }
 
 /**
- * 手动控制的语音识别管理器
- * 点击开始录音 → 用户说话 → 再次点击停止
+ * Manual voice recognition manager
+ * Click to start recording → User speaks → Click again to stop
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
@@ -213,7 +213,7 @@ fun VoiceInputButtonWithSpeechService(
 }
 
 /**
- * 语音输入按钮 - 用于Service context的版本（不使用ActivityResultLauncher）
+ * Voice input button - version for Service context (does not use ActivityResultLauncher)
  */
 @Composable
 fun VoiceInputButtonForService(
@@ -380,7 +380,7 @@ fun VoiceInputButtonForService(
         },
         onRequestPermission = {
             Log.d("VoiceInputService", "onRequestPermission called - opening app settings")
-            // 在Service context中，打开应用设置页面让用户手动授权
+            // In Service context, open app settings page for user to manually grant permission
             try {
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", context.packageName, null)
@@ -397,7 +397,7 @@ fun VoiceInputButtonForService(
 }
 
 /**
- * 语音输入按钮UI组件
+ * Voice input button UI component
  */
 @Composable
 private fun VoiceInputButton(
