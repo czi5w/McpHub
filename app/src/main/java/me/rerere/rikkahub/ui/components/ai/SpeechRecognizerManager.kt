@@ -89,11 +89,17 @@ fun VoiceInputButtonWithSpeechService(
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
     
+    // Log state changes for debugging
+    LaunchedEffect(isListening, state.loading) {
+        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}")
+    }
+    
     // Monitor loading state changes - stop voice recognition when AI starts responding
     MonitorLoadingStateEffect(
         loading = state.loading,
         isListening = isListening,
         onStopListening = {
+            Log.d("VoiceAutoSend", "MonitorLoadingStateEffect: Stopping voice recognition due to AI responding")
             isListening = false
             coroutineScope.launch {
                 try {
@@ -124,13 +130,16 @@ fun VoiceInputButtonWithSpeechService(
                     autoSendJob?.cancel()
                     
                     // Start new 2-second timer (triggers 2 seconds after last update)
-                    autoSendJob = launch {
+                    // Use coroutineScope to ensure timer survives even if collection stops
+                    autoSendJob = coroutineScope.launch {
                         delay(2000)
-                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
                         // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
-                            Log.d("VoiceAutoSend", "Triggering auto-send")
+                            Log.d("VoiceAutoSend", "Triggering auto-send, clearing isListening state")
                             state.shouldTriggerAutoSend = true
+                        } else {
+                            Log.d("VoiceAutoSend", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
@@ -165,6 +174,7 @@ fun VoiceInputButtonWithSpeechService(
         isEnabled = !state.loading, // Disable voice input when AI is responding
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
+            Log.d("VoiceAutoSend", "User clicked start button")
             isListening = true
             coroutineScope.launch {
                 try {
@@ -175,27 +185,35 @@ fun VoiceInputButtonWithSpeechService(
                         if (!initialized) {
                             isListening = false
                             Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
+                            Log.e("VoiceAutoSend", "Speech service initialization failed")
                             return@launch
                         }
+                        Log.d("VoiceAutoSend", "Speech service initialized successfully")
                     }
                     
+                    Log.d("VoiceAutoSend", "Starting speech recognition")
                     speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
                         partialResults = true
                     )
+                    Log.d("VoiceAutoSend", "Speech recognition started successfully")
                 } catch (e: Exception) {
                     isListening = false
+                    Log.e("VoiceAutoSend", "开始识别失败: ${e.message}", e)
                     Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
         },
         onStopListening = {
+            Log.d("VoiceAutoSend", "User clicked stop button. Current autoSendJob state: ${if (autoSendJob?.isActive == true) "ACTIVE" else "INACTIVE/NULL"}")
             isListening = false
             coroutineScope.launch {
                 try {
                     speechService.stopRecognition()
+                    Log.d("VoiceAutoSend", "Speech recognition stopped successfully")
                 } catch (e: Exception) {
+                    Log.e("VoiceAutoSend", "停止识别失败: ${e.message}", e)
                     Toast.makeText(context, "停止识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -229,11 +247,17 @@ fun VoiceInputButtonForService(
         Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
     }
     
+    // Log state changes for debugging
+    LaunchedEffect(isListening, state.loading) {
+        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}")
+    }
+    
     // Monitor loading state changes - stop voice recognition when AI starts responding
     MonitorLoadingStateEffect(
         loading = state.loading,
         isListening = isListening,
         onStopListening = {
+            Log.d("VoiceInputService", "MonitorLoadingStateEffect: Stopping voice recognition due to AI responding")
             isListening = false
             coroutineScope.launch {
                 try {
@@ -262,13 +286,16 @@ fun VoiceInputButtonForService(
                     autoSendJob?.cancel()
                     
                     // Start new 2-second timer (triggers 2 seconds after last update)
-                    autoSendJob = launch {
+                    // Use coroutineScope to ensure timer survives even if collection stops
+                    autoSendJob = coroutineScope.launch {
                         delay(2000)
-                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
+                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
                         // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
+                        } else {
+                            Log.d("VoiceInputService", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
