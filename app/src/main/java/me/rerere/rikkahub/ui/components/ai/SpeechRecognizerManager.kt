@@ -66,10 +66,25 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
 
-    var isListening by remember { mutableStateOf(false) }
+    var isListening by rememberSaveable { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
+    
+    // 监听loading状态变化，当AI开始响应时自动停止语音识别
+    LaunchedEffect(state.loading) {
+        if (state.loading && isListening) {
+            Log.d("VoiceAutoSend", "AI is responding, stopping voice recognition")
+            isListening = false
+            autoSendJob?.cancel()
+            autoSendJob = null
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                Log.e("VoiceAutoSend", "Error stopping recognition when AI starts responding", e)
+            }
+        }
+    }
 
     // 收集识别结果
     LaunchedEffect(speechService) {
@@ -127,6 +142,7 @@ fun VoiceInputButtonWithSpeechService(
 
     VoiceInputButton(
         isListening = isListening,
+        isEnabled = !state.loading, // 禁用语音输入当AI正在响应时
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             isListening = true
@@ -182,7 +198,7 @@ fun VoiceInputButtonForService(
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
 
-    var isListening by remember { mutableStateOf(false) }
+    var isListening by rememberSaveable { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
@@ -191,6 +207,21 @@ fun VoiceInputButtonForService(
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
         Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
+    }
+    
+    // 监听loading状态变化，当AI开始响应时自动停止语音识别
+    LaunchedEffect(state.loading) {
+        if (state.loading && isListening) {
+            Log.d("VoiceInputService", "AI is responding, stopping voice recognition")
+            isListening = false
+            autoSendJob?.cancel()
+            autoSendJob = null
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                Log.e("VoiceInputService", "Error stopping recognition when AI starts responding", e)
+            }
+        }
     }
 
     // 收集识别结果
@@ -254,6 +285,7 @@ fun VoiceInputButtonForService(
 
     VoiceInputButton(
         isListening = isListening,
+        isEnabled = !state.loading, // 禁用语音输入当AI正在响应时
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
@@ -338,6 +370,7 @@ fun VoiceInputButtonForService(
 @Composable
 private fun VoiceInputButton(
     isListening: Boolean,
+    isEnabled: Boolean,
     hasPermission: Boolean,
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
@@ -348,10 +381,11 @@ private fun VoiceInputButton(
             .size(42.dp)
             .clip(CircleShape)
             .background(
-                if (isListening) MaterialTheme.colorScheme.secondaryContainer
+                if (!isEnabled) MaterialTheme.colorScheme.surfaceVariant
+                else if (isListening) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.primary
             )
-            .clickable {
+            .clickable(enabled = isEnabled) {
                 if (hasPermission) {
                     if (isListening) {
                         onStopListening()
@@ -367,7 +401,8 @@ private fun VoiceInputButton(
         Icon(
             imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
             contentDescription = if (isListening) "停止语音" else "语音输入",
-            tint = MaterialTheme.colorScheme.onPrimary
+            tint = if (!isEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                   else MaterialTheme.colorScheme.onPrimary
         )
     }
 }
