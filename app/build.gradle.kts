@@ -19,7 +19,7 @@ plugins {
 tasks.register("ensureGoogleServicesJson") {
     val googleServicesFile = file("google-services.json")
     val exampleFile = file("google-services.json.example")
-    
+
     doFirst {
         if (!googleServicesFile.exists() && exampleFile.exists()) {
             exampleFile.copyTo(googleServicesFile, overwrite = false)
@@ -258,6 +258,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.paging)
+    implementation(libs.androidx.compose.animation.core.lint)
     ksp(libs.androidx.room.compiler)
 
     // Paging3
