@@ -53,13 +53,11 @@ private fun MonitorLoadingStateEffect(
     loading: Boolean,
     isListening: Boolean,
     onStopListening: () -> Unit,
-    onCancelAutoSend: () -> Unit,
     tag: String
 ) {
     LaunchedEffect(loading) {
         if (loading && isListening) {
             Log.d(tag, "AI is responding, stopping voice recognition")
-            onCancelAutoSend()
             onStopListening()
         }
     }
@@ -104,10 +102,6 @@ fun VoiceInputButtonWithSpeechService(
                     Log.e("VoiceAutoSend", "Error stopping recognition when AI starts responding", e)
                 }
             }
-        },
-        onCancelAutoSend = {
-            autoSendJob?.cancel()
-            autoSendJob = null
         },
         tag = "VoiceAutoSend"
     )
@@ -248,10 +242,6 @@ fun VoiceInputButtonForService(
                     Log.e("VoiceInputService", "Error stopping recognition when AI starts responding", e)
                 }
             }
-        },
-        onCancelAutoSend = {
-            autoSendJob?.cancel()
-            autoSendJob = null
         },
         tag = "VoiceInputService"
     )
