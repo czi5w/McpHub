@@ -86,7 +86,7 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
 
-    var isListening by rememberSaveable { mutableStateOf(false) }
+    var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
@@ -224,7 +224,7 @@ fun VoiceInputButtonForService(
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
 
-    var isListening by rememberSaveable { mutableStateOf(false) }
+    var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
@@ -433,7 +433,7 @@ private fun VoiceInputButton(
         Icon(
             imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
             contentDescription = if (isListening) "停止语音" else "语音输入",
-            tint = if (!isEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+            tint = if (!isEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                    else MaterialTheme.colorScheme.onPrimary
         )
     }
