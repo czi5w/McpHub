@@ -2,11 +2,13 @@ package me.rerere.rikkahub.data.sync
 
 import android.content.Context
 import android.util.Log
+import android.util.Property
+import android.view.Display
+import androidx.compose.lint.Name
 import at.bitfire.dav4jvm.okhttp.BasicDigestAuthHandler
 import at.bitfire.dav4jvm.okhttp.DavCollection
 import at.bitfire.dav4jvm.okhttp.Response
 import at.bitfire.dav4jvm.okhttp.exception.NotFoundException
-import at.bitfire.dav4jvm.property.Property
 import at.bitfire.dav4jvm.property.webdav.DisplayName
 import at.bitfire.dav4jvm.property.webdav.GetContentLength
 import at.bitfire.dav4jvm.property.webdav.GetLastModified
@@ -46,7 +48,7 @@ class WebdavSync(
         withContext(Dispatchers.IO) {
             davCollection.propfind(
                 depth = 1,
-                Property.Name(DisplayName::class.java),
+                DisplayName.Factory.getName(),
             ) { response, relation ->
                 Log.i(TAG, "testWebdav: $response | $relation")
             }
@@ -71,9 +73,9 @@ class WebdavSync(
             val files = mutableListOf<WebDavBackupItem>()
             collection.propfind(
                 depth = 1,
-                Property.Name(DisplayName::class.java),
-                Property.Name(GetContentLength::class.java),
-                Property.Name(GetLastModified::class.java)
+                DisplayName.Factory.getName(),
+                GetContentLength.Factory.getName(),
+                GetLastModified.Factory.getName()
             ) { response, relation ->
                 Log.i(TAG, "listBackupFiles: ${response.properties} ${response.href}")
                 if (relation == Response.HrefRelation.MEMBER) {
@@ -426,7 +428,7 @@ private fun WebDavConfig.requireCollection(path: String? = null): DavCollection 
 
 private suspend fun DavCollection.ensureCollectionExists() = withContext(Dispatchers.IO) {
     try {
-        propfind(depth = 0, Property.Name(DisplayName::class.java)) { response, relation ->
+        propfind(depth = 0, DisplayName.Factory.getName()) { response, relation ->
             Log.i(TAG, "ensureCollectionExists: $response $relation")
         }
     } catch (e: NotFoundException) {
