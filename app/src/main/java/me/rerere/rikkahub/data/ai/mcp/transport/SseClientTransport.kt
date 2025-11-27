@@ -136,6 +136,14 @@ internal class SseClientTransport(
                         }
 
                         else -> {
+                            // If we receive a message but endpoint hasn't been set yet,
+                            // use the original URL as the endpoint (some MCP servers don't send "endpoint" events)
+                            if (!endpoint.isCompleted) {
+                                val defaultEndpoint = urlString
+                                Log.i(TAG, "onEvent: Auto-setting endpoint to original URL: $defaultEndpoint")
+                                endpoint.complete(defaultEndpoint)
+                            }
+                            
                             scope.launch {
                                 try {
                                     val message = McpJson.decodeFromString<JSONRPCMessage>(data)
