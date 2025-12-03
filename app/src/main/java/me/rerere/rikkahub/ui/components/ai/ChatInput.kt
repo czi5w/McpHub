@@ -76,6 +76,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +111,8 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Music
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Video
+import com.composables.icons.lucide.Volume2
+import com.composables.icons.lucide.VolumeOff
 import com.composables.icons.lucide.X
 import com.composables.icons.lucide.Zap
 import com.dokar.sonner.ToastType
@@ -136,6 +139,7 @@ import me.rerere.rikkahub.ui.components.ui.permission.PermissionCamera
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
 import me.rerere.rikkahub.ui.components.ui.permission.rememberPermissionState
 import me.rerere.rikkahub.ui.context.LocalSettings
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.utils.createChatFilesByContents
@@ -169,6 +173,7 @@ fun ChatInput(
     onCancelClick: () -> Unit,
     onSendClick: () -> Unit,
     onLongSendClick: () -> Unit,
+    onUpdateSettings: ((Settings) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val toaster = LocalToaster.current
@@ -246,6 +251,74 @@ fun ChatInput(
                 settings = settings,
                 useServiceCompatibleVoiceButton = useServiceCompatibleVoiceButton
             )
+
+            // Auto TTS Toggle Row (only show if onUpdateSettings is provided)
+            if (onUpdateSettings != null) {
+                val ttsState = LocalTTSState.current
+                val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
+                
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        onClick = {
+                            if (!isTTSSpeaking) {
+                                onUpdateSettings(
+                                    settings.copy(
+                                        displaySetting = settings.displaySetting.copy(
+                                            autoPlayTTS = !settings.displaySetting.autoPlayTTS
+                                        )
+                                    )
+                                )
+                            }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        tonalElevation = if (settings.displaySetting.autoPlayTTS) 4.dp else 0.dp,
+                        color = if (isTTSSpeaking) {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        } else if (settings.displaySetting.autoPlayTTS) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        },
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (settings.displaySetting.autoPlayTTS) Lucide.Volume2 else Lucide.VolumeOff,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isTTSSpeaking) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                } else if (settings.displaySetting.autoPlayTTS) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                }
+                            )
+                            Text(
+                                text = stringResource(R.string.auto_play_tts),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (isTTSSpeaking) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                } else if (settings.displaySetting.autoPlayTTS) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
 
             // Actions Row
             Row(

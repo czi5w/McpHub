@@ -356,6 +356,9 @@ private fun ChatPageContent(
                     onClearContext = {
                         vm.handleMessageTruncate()
                     },
+                    onUpdateSettings = { newSettings ->
+                        vm.updateSettings(newSettings)
+                    }
                 )
             },
             containerColor = Color.Transparent,
