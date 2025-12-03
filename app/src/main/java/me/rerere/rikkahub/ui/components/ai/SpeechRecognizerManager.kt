@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.Settings
+import android.provider.Settings as AndroidSettings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -38,25 +38,53 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.data.datastore.Settings
+import me.rerere.rikkahub.data.datastore.getCurrentChatModel
+import me.rerere.rikkahub.ui.context.LocalSettings
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
- * 手动控制的语音识别管理器
- * 点击开始录音 → 用户说话 → 再次点击停止
+ * Shared effect to monitor loading state and stop voice recognition when AI starts responding
+ */
+@Composable
+private fun MonitorLoadingStateEffect(
+    loading: Boolean,
+    isListening: Boolean,
+    onStopListening: () -> Unit,
+    tag: String
+) {
+    LaunchedEffect(loading) {
+        if (loading && isListening) {
+            Log.d(tag, "AI is responding, stopping voice recognition")
+            onStopListening()
+        }
+    }
+}
+
+/**
+ * Manual voice recognition manager
+ * Click to start recording → User speaks → Click again to stop
  */
 @Composable
 fun VoiceInputButtonWithSpeechService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    settings: Settings
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to disable voice input during TTS playback
+    val ttsState = LocalTTSState.current
+    val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -70,8 +98,62 @@ fun VoiceInputButtonWithSpeechService(
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
+    var wasListeningBeforeAI by remember { mutableStateOf(false) }
+    
+    // Log state changes for debugging
+    LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
+        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
+    }
+    
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
+    // and automatically restart when both AI and TTS finish for continuous conversation
+    LaunchedEffect(state.loading, isTTSSpeaking) {
+        val aiOrTTSActive = state.loading || isTTSSpeaking
+        
+        if (aiOrTTSActive && isListening) {
+            // AI started responding or TTS started while we were listening - stop and remember this
+            Log.d("VoiceAutoSend", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
+            wasListeningBeforeAI = true
+            isListening = false
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                Log.e("VoiceAutoSend", "Error stopping recognition when AI/TTS becomes active", e)
+            }
+        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
+            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
+            Log.d("VoiceAutoSend", "AI and TTS finished, automatically restarting voice recognition")
+            wasListeningBeforeAI = false
+            
+            // Check if model is still selected and permission is granted
+            val currentModel = settings.getCurrentChatModel()
+            val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
+            
+            if (currentModel != null && hasPermission) {
+                isListening = true
+                try {
+                    if (!speechService.isInitialized.value) {
+                        Log.d("VoiceAutoSend", "Initializing speech service for auto-restart")
+                        speechService.initialize()
+                    }
+                    
+                    Log.d("VoiceAutoSend", "Auto-restarting speech recognition for continuous conversation")
+                    speechService.startRecognition(
+                        languageCode = "zh-CN",
+                        continuousMode = true,
+                        partialResults = true
+                    )
+                } catch (e: Exception) {
+                    isListening = false
+                    Log.e("VoiceAutoSend", "Failed to auto-restart voice recognition: ${e.message}", e)
+                }
+            } else {
+                Log.w("VoiceAutoSend", "Cannot auto-restart: model=${currentModel?.displayName}, hasPermission=$hasPermission")
+            }
+        }
+    }
 
-    // 收集识别结果
+    // Collect recognition results
     LaunchedEffect(speechService) {
         Log.d("VoiceAutoSend", "Starting recognition result collection")
         launch {
@@ -81,26 +163,29 @@ fun VoiceInputButtonWithSpeechService(
                 
                 Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 
-                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
                     
-                    // 取消之前的定时器
+                    // Cancel previous timer
                     autoSendJob?.cancel()
                     
-                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
-                    autoSendJob = launch {
+                    // Start new 2-second timer (triggers 2 seconds after last update)
+                    // Use coroutineScope to ensure timer survives even if collection stops
+                    autoSendJob = coroutineScope.launch {
                         delay(2000)
-                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 2秒后，如果输入框有内容，触发自动发送
+                        Log.d("VoiceAutoSend", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
+                        // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
-                            Log.d("VoiceAutoSend", "Triggering auto-send")
+                            Log.d("VoiceAutoSend", "Triggering auto-send, clearing isListening state")
                             state.shouldTriggerAutoSend = true
+                        } else {
+                            Log.d("VoiceAutoSend", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
                 
-                // 如果收到最终结果，也记录一下
+                // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceAutoSend", "Final result received")
                 }
@@ -116,7 +201,7 @@ fun VoiceInputButtonWithSpeechService(
         }
     }
     
-    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
         if (!isListening && currentText != lastVoiceInputText) {
@@ -127,8 +212,19 @@ fun VoiceInputButtonWithSpeechService(
 
     VoiceInputButton(
         isListening = isListening,
+        isEnabled = !state.loading && !isTTSSpeaking, // Disable voice input when AI is responding or TTS is playing
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
+            Log.d("VoiceAutoSend", "User clicked start button")
+            
+            // Check if a model is selected before starting voice recognition
+            val currentModel = settings.getCurrentChatModel()
+            if (currentModel == null) {
+                Log.w("VoiceAutoSend", "Cannot start voice recognition: no model selected")
+                Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
+                return@VoiceInputButton
+            }
+            
             isListening = true
             coroutineScope.launch {
                 try {
@@ -139,27 +235,36 @@ fun VoiceInputButtonWithSpeechService(
                         if (!initialized) {
                             isListening = false
                             Toast.makeText(context, "语音识别服务初始化失败", Toast.LENGTH_SHORT).show()
+                            Log.e("VoiceAutoSend", "Speech service initialization failed")
                             return@launch
                         }
+                        Log.d("VoiceAutoSend", "Speech service initialized successfully")
                     }
                     
+                    Log.d("VoiceAutoSend", "Starting speech recognition with model: ${currentModel.displayName}")
                     speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
                         partialResults = true
                     )
+                    Log.d("VoiceAutoSend", "Speech recognition started successfully")
                 } catch (e: Exception) {
                     isListening = false
+                    Log.e("VoiceAutoSend", "开始识别失败: ${e.message}", e)
                     Toast.makeText(context, "开始识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
         },
         onStopListening = {
+            Log.d("VoiceAutoSend", "User clicked stop button. Current autoSendJob state: ${if (autoSendJob?.isActive == true) "ACTIVE" else "INACTIVE/NULL"}")
             isListening = false
+            wasListeningBeforeAI = false // Clear the flag to prevent auto-restart
             coroutineScope.launch {
                 try {
                     speechService.stopRecognition()
+                    Log.d("VoiceAutoSend", "Speech recognition stopped successfully")
                 } catch (e: Exception) {
+                    Log.e("VoiceAutoSend", "停止识别失败: ${e.message}", e)
                     Toast.makeText(context, "停止识别失败", Toast.LENGTH_SHORT).show()
                 }
             }
@@ -171,29 +276,92 @@ fun VoiceInputButtonWithSpeechService(
 }
 
 /**
- * 语音输入按钮 - 用于Service context的版本（不使用ActivityResultLauncher）
+ * Voice input button - version for Service context (does not use ActivityResultLauncher)
  */
 @Composable
 fun VoiceInputButtonForService(
     state: ChatInputState,
     speechService: SpeechService,
-    context: Context
+    context: Context,
+    settings: Settings
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to disable voice input during TTS playback
+    val ttsState = LocalTTSState.current
+    val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
 
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
+    var wasListeningBeforeAI by remember { mutableStateOf(false) }
     
     // Log permission status on composition
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
         Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
     }
+    
+    // Log state changes for debugging
+    LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
+        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
+    }
+    
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
+    // and automatically restart when both AI and TTS finish for continuous conversation
+    LaunchedEffect(state.loading, isTTSSpeaking) {
+        val aiOrTTSActive = state.loading || isTTSSpeaking
+        
+        if (aiOrTTSActive && isListening) {
+            // AI started responding or TTS started while we were listening - stop and remember this
+            Log.d("VoiceInputService", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
+            wasListeningBeforeAI = true
+            isListening = false
+            try {
+                speechService.stopRecognition()
+            } catch (e: Exception) {
+                Log.e("VoiceInputService", "Error stopping recognition when AI/TTS becomes active", e)
+            }
+        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
+            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
+            Log.d("VoiceInputService", "AI and TTS finished, automatically restarting voice recognition")
+            wasListeningBeforeAI = false
+            
+            // Check if model is still selected and permission is granted
+            val currentModel = settings.getCurrentChatModel()
+            val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
+            
+            if (currentModel != null && hasPermission) {
+                isListening = true
+                try {
+                    if (!speechService.isInitialized.value) {
+                        Log.d("VoiceInputService", "Initializing speech service for auto-restart")
+                        speechService.initialize()
+                    }
+                    
+                    Log.d("VoiceInputService", "Auto-restarting speech recognition for continuous conversation")
+                    val started = speechService.startRecognition(
+                        languageCode = "zh-CN",
+                        continuousMode = true,
+                        partialResults = true
+                    )
+                    if (!started) {
+                        isListening = false
+                        Log.w("VoiceInputService", "Failed to auto-restart: startRecognition returned false")
+                    }
+                } catch (e: Exception) {
+                    isListening = false
+                    Log.e("VoiceInputService", "Failed to auto-restart voice recognition: ${e.message}", e)
+                }
+            } else {
+                Log.w("VoiceInputService", "Cannot auto-restart: model=${currentModel?.displayName}, hasPermission=$hasPermission")
+            }
+        }
+    }
 
-    // 收集识别结果
+    // Collect recognition results
     LaunchedEffect(speechService) {
         launch {
             speechService.recognitionResultFlow.collect { result ->
@@ -201,26 +369,29 @@ fun VoiceInputButtonForService(
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
                 
-                // 当收到识别结果（包括partial和final）且有文本内容时，更新最后更新时间
+                // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
                     
-                    // 取消之前的定时器
+                    // Cancel previous timer
                     autoSendJob?.cancel()
                     
-                    // 启动新的2秒定时器（在收到最后一次更新后2秒触发）
-                    autoSendJob = launch {
+                    // Start new 2-second timer (triggers 2 seconds after last update)
+                    // Use coroutineScope to ensure timer survives even if collection stops
+                    autoSendJob = coroutineScope.launch {
                         delay(2000)
-                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}")
-                        // 2秒后，如果输入框有内容，触发自动发送
+                        Log.d("VoiceInputService", "2 seconds elapsed since last update. isEmpty=${state.isEmpty()}, isListening=$isListening")
+                        // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
                             state.shouldTriggerAutoSend = true
+                        } else {
+                            Log.d("VoiceInputService", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
                 
-                // 如果收到最终结果，也记录一下
+                // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceInputService", "Final result received")
                 }
@@ -242,7 +413,7 @@ fun VoiceInputButtonForService(
         }
     }
     
-    // 监听文本变化，如果用户手动输入（文本与最后的语音输入不同），取消自动发送定时器
+    // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
         if (!isListening && currentText != lastVoiceInputText) {
@@ -254,6 +425,7 @@ fun VoiceInputButtonForService(
 
     VoiceInputButton(
         isListening = isListening,
+        isEnabled = !state.loading && !isTTSSpeaking, // Disable voice input when AI is responding or TTS is playing
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
@@ -263,6 +435,14 @@ fun VoiceInputButtonForService(
             if (!hasPermission) {
                 Log.w("VoiceInputService", "Permission not granted, cannot start recognition")
                 Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                return@VoiceInputButton
+            }
+            
+            // Check if a model is selected before starting voice recognition
+            val currentModel = settings.getCurrentChatModel()
+            if (currentModel == null) {
+                Log.w("VoiceInputService", "Cannot start voice recognition: no model selected")
+                Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
                 return@VoiceInputButton
             }
             
@@ -282,7 +462,7 @@ fun VoiceInputButtonForService(
                         }
                     }
                     
-                    Log.d("VoiceInputService", "Calling speechService.startRecognition")
+                    Log.d("VoiceInputService", "Calling speechService.startRecognition with model: ${currentModel.displayName}")
                     val started = speechService.startRecognition(
                         languageCode = "zh-CN",
                         continuousMode = true,
@@ -303,6 +483,7 @@ fun VoiceInputButtonForService(
         onStopListening = {
             Log.d("VoiceInputService", "onStopListening called")
             isListening = false
+            wasListeningBeforeAI = false // Clear the flag to prevent auto-restart
             coroutineScope.launch {
                 try {
                     Log.d("VoiceInputService", "Calling speechService.stopRecognition")
@@ -316,9 +497,9 @@ fun VoiceInputButtonForService(
         },
         onRequestPermission = {
             Log.d("VoiceInputService", "onRequestPermission called - opening app settings")
-            // 在Service context中，打开应用设置页面让用户手动授权
+            // In Service context, open app settings page for user to manually grant permission
             try {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                val intent = Intent(AndroidSettings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", context.packageName, null)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
@@ -333,11 +514,12 @@ fun VoiceInputButtonForService(
 }
 
 /**
- * 语音输入按钮UI组件
+ * Voice input button UI component
  */
 @Composable
 private fun VoiceInputButton(
     isListening: Boolean,
+    isEnabled: Boolean,
     hasPermission: Boolean,
     onStartListening: () -> Unit,
     onStopListening: () -> Unit,
@@ -348,10 +530,11 @@ private fun VoiceInputButton(
             .size(42.dp)
             .clip(CircleShape)
             .background(
-                if (isListening) MaterialTheme.colorScheme.secondaryContainer
+                if (!isEnabled) MaterialTheme.colorScheme.surfaceVariant
+                else if (isListening) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.primary
             )
-            .clickable {
+            .clickable(enabled = isEnabled) {
                 if (hasPermission) {
                     if (isListening) {
                         onStopListening()
@@ -367,7 +550,8 @@ private fun VoiceInputButton(
         Icon(
             imageVector = if (isListening) Icons.Default.Stop else Icons.Default.Mic,
             contentDescription = if (isListening) "停止语音" else "语音输入",
-            tint = MaterialTheme.colorScheme.onPrimary
+            tint = if (!isEnabled) MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                   else MaterialTheme.colorScheme.onPrimary
         )
     }
 }

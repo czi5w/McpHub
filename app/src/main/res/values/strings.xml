@@ -322,6 +322,9 @@
   <string name="setting_display_page_show_token_usage_desc">Display token usage and message count</string>
   <string name="setting_display_page_auto_collapse_thinking_title">Auto Collapse Thinking</string>
   <string name="setting_display_page_auto_collapse_thinking_desc">Automatically collapse thinking content after thinking is complete</string>
+  <string name="setting_display_page_auto_play_tts_title">Auto Play TTS</string>
+  <string name="setting_display_page_auto_play_tts_desc">Automatically play AI responses as speech when generation completes</string>
+  <string name="auto_play_tts">Auto Play</string>
   <string name="setting_display_page_show_updates_title">Show Updates</string>
   <string name="setting_display_page_show_updates_desc">Whether to display app update notifications</string>
   <string name="setting_display_page_show_message_jumper_title">Show Message Jumper</string>

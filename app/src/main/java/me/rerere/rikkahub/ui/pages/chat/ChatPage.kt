@@ -53,6 +53,7 @@ import com.composables.icons.lucide.X
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.R
@@ -64,6 +65,7 @@ import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.ai.ChatInput
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 import me.rerere.rikkahub.ui.hooks.EditStateContent
@@ -101,6 +103,26 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>) {
     val loadingJob by vm.conversationJob.collectAsStateWithLifecycle()
     val currentChatModel by vm.currentChatModel.collectAsStateWithLifecycle()
     val enableWebSearch by vm.enableWebSearch.collectAsStateWithLifecycle()
+
+    // Handle auto TTS playback when AI generation completes
+    val ttsState = LocalTTSState.current
+    LaunchedEffect(Unit) {
+        vm.generationDoneFlow.collect { doneConversationId ->
+            // Only auto-play if the setting is enabled and this is the current conversation
+            if (setting.displaySetting.autoPlayTTS && doneConversationId == id) {
+                // Use the conversation state that's properly synchronized with UI lifecycle
+                val lastMessage = conversation.currentMessages.lastOrNull { 
+                    it.role == MessageRole.ASSISTANT 
+                }
+                if (lastMessage != null) {
+                    val text = lastMessage.toText()
+                    if (text.isNotBlank()) {
+                        ttsState.speak(text)
+                    }
+                }
+            }
+        }
+    }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
@@ -268,6 +290,7 @@ private fun ChatPageContent(
                     settings = setting,
                     conversation = conversation,
                     mcpManager = vm.mcpManager,
+                    currentChatModel = currentChatModel,
                     onCancelClick = {
                         loadingJob?.cancel()
                     },
@@ -333,6 +356,9 @@ private fun ChatPageContent(
                     onClearContext = {
                         vm.handleMessageTruncate()
                     },
+                    onUpdateSettings = { newSettings ->
+                        vm.updateSettings(newSettings)
+                    }
                 )
             },
             containerColor = Color.Transparent,
