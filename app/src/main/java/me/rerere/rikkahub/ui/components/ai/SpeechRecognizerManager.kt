@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.Job
@@ -46,6 +47,7 @@ import kotlinx.coroutines.launch
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.ui.context.LocalSettings
+import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.hooks.ChatInputState
 
 /**
@@ -79,6 +81,10 @@ fun VoiceInputButtonWithSpeechService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to disable voice input during TTS playback
+    val ttsState = LocalTTSState.current
+    val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -95,26 +101,28 @@ fun VoiceInputButtonWithSpeechService(
     var wasListeningBeforeAI by remember { mutableStateOf(false) }
     
     // Log state changes for debugging
-    LaunchedEffect(isListening, state.loading) {
-        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, wasListeningBeforeAI=$wasListeningBeforeAI")
+    LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
+        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
     }
     
-    // Monitor loading state changes - stop voice recognition when AI starts responding,
-    // and automatically restart when AI finishes for continuous conversation
-    LaunchedEffect(state.loading) {
-        if (state.loading && isListening) {
-            // AI started responding while we were listening - stop and remember this
-            Log.d("VoiceAutoSend", "AI is responding, stopping voice recognition and marking for auto-restart")
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
+    // and automatically restart when both AI and TTS finish for continuous conversation
+    LaunchedEffect(state.loading, isTTSSpeaking) {
+        val aiOrTTSActive = state.loading || isTTSSpeaking
+        
+        if (aiOrTTSActive && isListening) {
+            // AI started responding or TTS started while we were listening - stop and remember this
+            Log.d("VoiceAutoSend", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
             wasListeningBeforeAI = true
             isListening = false
             try {
                 speechService.stopRecognition()
             } catch (e: Exception) {
-                Log.e("VoiceAutoSend", "Error stopping recognition when AI starts responding", e)
+                Log.e("VoiceAutoSend", "Error stopping recognition when AI/TTS becomes active", e)
             }
-        } else if (!state.loading && wasListeningBeforeAI) {
-            // AI finished responding and we should restart voice recognition for continuous conversation
-            Log.d("VoiceAutoSend", "AI finished responding, automatically restarting voice recognition")
+        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
+            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
+            Log.d("VoiceAutoSend", "AI and TTS finished, automatically restarting voice recognition")
             wasListeningBeforeAI = false
             
             // Check if model is still selected and permission is granted
@@ -204,7 +212,7 @@ fun VoiceInputButtonWithSpeechService(
 
     VoiceInputButton(
         isListening = isListening,
-        isEnabled = !state.loading, // Disable voice input when AI is responding
+        isEnabled = !state.loading && !isTTSSpeaking, // Disable voice input when AI is responding or TTS is playing
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceAutoSend", "User clicked start button")
@@ -279,6 +287,10 @@ fun VoiceInputButtonForService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
+    
+    // Get TTS state to disable voice input during TTS playback
+    val ttsState = LocalTTSState.current
+    val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
 
     var isListening by remember { mutableStateOf(false) }
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
@@ -293,26 +305,28 @@ fun VoiceInputButtonForService(
     }
     
     // Log state changes for debugging
-    LaunchedEffect(isListening, state.loading) {
-        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, wasListeningBeforeAI=$wasListeningBeforeAI")
+    LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
+        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
     }
     
-    // Monitor loading state changes - stop voice recognition when AI starts responding,
-    // and automatically restart when AI finishes for continuous conversation
-    LaunchedEffect(state.loading) {
-        if (state.loading && isListening) {
-            // AI started responding while we were listening - stop and remember this
-            Log.d("VoiceInputService", "AI is responding, stopping voice recognition and marking for auto-restart")
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
+    // and automatically restart when both AI and TTS finish for continuous conversation
+    LaunchedEffect(state.loading, isTTSSpeaking) {
+        val aiOrTTSActive = state.loading || isTTSSpeaking
+        
+        if (aiOrTTSActive && isListening) {
+            // AI started responding or TTS started while we were listening - stop and remember this
+            Log.d("VoiceInputService", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
             wasListeningBeforeAI = true
             isListening = false
             try {
                 speechService.stopRecognition()
             } catch (e: Exception) {
-                Log.e("VoiceInputService", "Error stopping recognition when AI starts responding", e)
+                Log.e("VoiceInputService", "Error stopping recognition when AI/TTS becomes active", e)
             }
-        } else if (!state.loading && wasListeningBeforeAI) {
-            // AI finished responding and we should restart voice recognition for continuous conversation
-            Log.d("VoiceInputService", "AI finished responding, automatically restarting voice recognition")
+        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
+            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
+            Log.d("VoiceInputService", "AI and TTS finished, automatically restarting voice recognition")
             wasListeningBeforeAI = false
             
             // Check if model is still selected and permission is granted
@@ -411,7 +425,7 @@ fun VoiceInputButtonForService(
 
     VoiceInputButton(
         isListening = isListening,
-        isEnabled = !state.loading, // Disable voice input when AI is responding
+        isEnabled = !state.loading && !isTTSSpeaking, // Disable voice input when AI is responding or TTS is playing
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceInputService", "onStartListening called")
