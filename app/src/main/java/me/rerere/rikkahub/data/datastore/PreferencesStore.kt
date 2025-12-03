@@ -353,6 +353,7 @@ data class DisplaySetting(
     val enableNotificationOnMessageGeneration: Boolean = false,
     val codeBlockAutoWrap: Boolean = false,
     val codeBlockAutoCollapse: Boolean = false,
+    val autoPlayTTS: Boolean = false,
 )
 
 @Serializable
