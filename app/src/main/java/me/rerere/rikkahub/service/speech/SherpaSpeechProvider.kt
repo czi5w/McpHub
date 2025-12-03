@@ -173,7 +173,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                 numThreads = 2,
                 useGPU = false
             )
-        
+
         Log.d(TAG, "Model config created:")
         Log.d(TAG, "  encoderParam: ${modelConfig.encoderParam}")
         Log.d(TAG, "  encoderBin: ${modelConfig.encoderBin}")
@@ -182,7 +182,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
         Log.d(TAG, "  joinerParam: ${modelConfig.joinerParam}")
         Log.d(TAG, "  joinerBin: ${modelConfig.joinerBin}")
         Log.d(TAG, "  tokens: ${modelConfig.tokens}")
-        
+
         // Verify files exist
         val filesToCheck = listOf(
             modelConfig.encoderParam,
@@ -289,18 +289,19 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                         // Try VOICE_COMMUNICATION for better background/service compatibility
                         // VOICE_RECOGNITION (6) still shows volume=0.0 in floating window
                         // VOICE_COMMUNICATION (7) is designed for VoIP and may work better
-                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+//                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
+                    MediaRecorder.AudioSource.MIC,
                         sampleRateInHz,
                         channelConfig,
                         audioFormat,
                         minBufferSize * 2
                 )
-        
+
         Log.d(TAG, "Created AudioRecord with source=VOICE_COMMUNICATION, sampleRate=$sampleRateInHz, bufferSize=${minBufferSize * 2}")
-        
+
         val recordingState = audioRecord?.state
         Log.d(TAG, "AudioRecord state: $recordingState (${if (recordingState == AudioRecord.STATE_INITIALIZED) "INITIALIZED" else "UNINITIALIZED"})")
-        
+
         audioRecord?.startRecording()
         _recognitionState.value = SpeechService.RecognitionState.RECOGNIZING
         // 重置音量
@@ -321,7 +322,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                         val ret = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
                         if (ret > 0) {
                             readCount++
-                            
+
                             // Log first few samples periodically for debugging
                             if (readCount % 50 == 0) {
                                 val samplePreview = audioBuffer.take(10).joinToString(", ")
@@ -329,11 +330,11 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                                 val minSample = audioBuffer.take(ret).minOrNull() ?: 0
                                 Log.d(TAG, "Audio buffer preview: [$samplePreview...], max=$maxSample, min=$minSample")
                             }
-                            
+
                             // 计算并更新音量级别
                             val volumeLevel = calculateVolumeLevel(audioBuffer, ret)
                             _volumeLevelFlow.value = volumeLevel
-                            
+
                             // Log audio capture details periodically
                             if (readCount % 50 == 0) {
                                 Log.d(TAG, "Audio read #$readCount: samples=$ret, volume=$volumeLevel")
@@ -341,7 +342,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
 
                             val samples = FloatArray(ret) { i -> audioBuffer[i] / 32768.0f }
                             samplesProcessed += ret
-                            
+
                             recognizer?.let {
                                 it.acceptSamples(samples)
                                 while (it.isReady()) {
@@ -349,7 +350,7 @@ class SherpaSpeechProvider(private val context: Context) : SpeechService {
                                 }
                                 val isEndpoint = it.isEndpoint()
                                 val text = it.text
-                                
+
                                 // Log recognizer state periodically
                                 if (readCount % 50 == 0) {
                                     Log.d(TAG, "Recognizer state: ready=${it.isReady()}, endpoint=$isEndpoint, text='$text', totalSamples=$samplesProcessed")
