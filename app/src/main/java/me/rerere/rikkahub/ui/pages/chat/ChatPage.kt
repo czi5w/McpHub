@@ -106,12 +106,15 @@ fun ChatPage(id: Uuid, text: String?, files: List<Uri>) {
 
     // Handle auto TTS playback when AI generation completes
     val ttsState = LocalTTSState.current
-    LaunchedEffect(setting.displaySetting.autoPlayTTS) {
+    LaunchedEffect(Unit) {
         vm.generationDoneFlow.collect { conversationId ->
             // Only auto-play if the setting is enabled and this is the current conversation
             if (setting.displaySetting.autoPlayTTS && conversationId == id) {
-                // Get the last assistant message
-                val lastMessage = conversation.currentMessages.lastOrNull { 
+                // Small delay to ensure conversation state is updated
+                kotlinx.coroutines.delay(100)
+                // Get the last assistant message from the current state
+                val currentConv = vm.conversation.value
+                val lastMessage = currentConv.currentMessages.lastOrNull { 
                     it.role == MessageRole.ASSISTANT 
                 }
                 if (lastMessage != null) {
