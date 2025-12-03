@@ -306,7 +306,7 @@ data class Settings(
     val displaySetting: DisplaySetting = DisplaySetting(),
     val enableWebSearch: Boolean = false,
     val favoriteModels: List<Uuid> = emptyList(),
-    val chatModelId: Uuid = Uuid.random(),
+    val chatModelId: Uuid = Uuid.parse("dd82297e-4237-4d3c-85b3-58d5c7084fc2"),
     val titleModelId: Uuid = Uuid.random(),
     val imageGenerationModelId: Uuid = Uuid.random(),
     val titlePrompt: String = DEFAULT_TITLE_PROMPT,
@@ -391,6 +391,7 @@ fun List<ProviderSetting>.findModelById(uuid: Uuid): Model? {
 }
 
 fun Settings.getCurrentChatModel(): Model? {
+    Log.d("Preference", "chatModelId is ${this.getCurrentAssistant().chatModelId ?: this.chatModelId}")
     return findModelById(this.getCurrentAssistant().chatModelId ?: this.chatModelId)
 }
 
