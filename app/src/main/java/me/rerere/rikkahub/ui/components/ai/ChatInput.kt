@@ -112,7 +112,7 @@ import com.composables.icons.lucide.Music
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Video
 import com.composables.icons.lucide.Volume2
-import com.composables.icons.lucide.VolumeOff
+import com.composables.icons.lucide.VolumeX
 import com.composables.icons.lucide.X
 import com.composables.icons.lucide.Zap
 import com.dokar.sonner.ToastType
@@ -293,7 +293,7 @@ fun ChatInput(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = if (settings.displaySetting.autoPlayTTS) Lucide.Volume2 else Lucide.VolumeOff,
+                                imageVector = if (settings.displaySetting.autoPlayTTS) Lucide.Volume2 else Lucide.VolumeX,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp),
                                 tint = if (isTTSSpeaking) {
