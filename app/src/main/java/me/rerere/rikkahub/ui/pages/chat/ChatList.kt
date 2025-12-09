@@ -205,7 +205,7 @@ private fun SharedTransitionScope.ChatListNormal(
                 // println("is bottom = ${visibleItemsInfo.isAtBottom()}, scroll = ${state.isScrollInProgress}, can_scroll = ${state.canScrollForward}, loading = $loading")
                 if (!state.isScrollInProgress && loadingState) {
                     if (visibleItemsInfo.isAtBottom()) {
-                        state.requestScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
+                        state.animateScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
                         // Log.i(TAG, "ChatList: scroll to ${conversationUpdated.messageNodes.lastIndex}")
                     }
                 }

@@ -538,10 +538,10 @@ private fun ColumnScope.ModelList(
                     if (index >= 0) {
                         providerBadgeListState.animateScrollToItem(index)
                     } else {
-                        providerBadgeListState.requestScrollToItem(0)
+                        providerBadgeListState.animateScrollToItem(0)
                     }
                 } else {
-                    providerBadgeListState.requestScrollToItem(0)
+                    providerBadgeListState.animateScrollToItem(0)
                 }
             }
     }
