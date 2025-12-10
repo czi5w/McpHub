@@ -199,14 +199,18 @@ private fun SharedTransitionScope.ChatListNormal(
         modifier = Modifier
             .fillMaxSize(),
     ) {
-        // 自动滚动到底部
-        LaunchedEffect(state) {
-            snapshotFlow { state.layoutInfo.visibleItemsInfo }.collect { visibleItemsInfo ->
-                // println("is bottom = ${visibleItemsInfo.isAtBottom()}, scroll = ${state.isScrollInProgress}, can_scroll = ${state.canScrollForward}, loading = $loading")
-                if (!state.isScrollInProgress && loadingState) {
-                    if (visibleItemsInfo.isAtBottom()) {
-                        state.animateScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
-                        // Log.i(TAG, "ChatList: scroll to ${conversationUpdated.messageNodes.lastIndex}")
+        // 自动滚动到底部 - 当消息变化且正在加载时
+        LaunchedEffect(conversation.messageNodes.size, loadingState) {
+            if (loadingState && conversation.messageNodes.isNotEmpty()) {
+                // 延迟一小段时间让布局完成
+                delay(50)
+                // 检查是否在底部
+                val visibleItems = state.layoutInfo.visibleItemsInfo
+                if (visibleItems.isAtBottom()) {
+                    // 滚动到列表末尾（包括 loading indicator 和 bottom spacer）
+                    val targetIndex = state.layoutInfo.totalItemsCount - 1
+                    if (targetIndex >= 0) {
+                        state.animateScrollToItem(targetIndex)
                     }
                 }
             }
