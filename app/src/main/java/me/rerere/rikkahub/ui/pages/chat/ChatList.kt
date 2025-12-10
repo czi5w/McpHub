@@ -101,6 +101,7 @@ private const val TAG = "ChatList"
 private const val LoadingIndicatorKey = "LoadingIndicator"
 private const val ScrollBottomKey = "ScrollBottomKey"
 private const val SCROLL_DELAY_MS = 50L // Small delay to allow LazyColumn layout to complete before scrolling
+private const val MAX_BOTTOM_THRESHOLD_PX = 200f // Maximum pixel threshold for isAtBottom detection
 
 @Composable
 fun ChatList(
@@ -194,7 +195,7 @@ private fun SharedTransitionScope.ChatListNormal(
         val lastItemBottom = lastItem.offset + lastItem.size
         val viewportEnd = state.layoutInfo.viewportEndOffset
         // 允许一定的误差范围（最后一项的 50% 高度或最多 200px）
-        val threshold = minOf(lastItem.size * 0.5f, 200f)
+        val threshold = minOf(lastItem.size * 0.5f, MAX_BOTTOM_THRESHOLD_PX)
         return lastItemBottom <= viewportEnd + threshold
     }
 
