@@ -308,22 +308,26 @@ private fun SharedTransitionScope.ChatListNormal(
             }
         }
 
-        // 自动滚动到底部 - 使用 snapshotFlow 监听布局变化
-        LaunchedEffect(conversation.messageNodes.size) {
-            if (conversation.messageNodes.isNotEmpty()) {
-                snapshotFlow { state.layoutInfo.totalItemsCount }
-                    .collect { totalItemsCount ->
-                        if (totalItemsCount > 0) {
-                            // 延迟让布局完成
-                            delay(SCROLL_DELAY_MS)
-                            // 检查是否在底部
-                            val visibleItems = state.layoutInfo.visibleItemsInfo
-                            if (visibleItems.isAtBottom()) {
-                                // 滚动到最后一个项目
-                                state.animateScrollToItem(totalItemsCount - 1)
-                            }
-                        }
+        // 自动滚动到底部 - 监听消息变化和加载状态
+        LaunchedEffect(conversation.messageNodes.size, loadingState) {
+            snapshotFlow { 
+                // 监听布局信息的变化，包括项目数量和最后一项的高度
+                state.layoutInfo.totalItemsCount to 
+                state.layoutInfo.visibleItemsInfo.lastOrNull()?.size
+            }.collect { (totalItemsCount, lastItemSize) ->
+                if (totalItemsCount > 0 && conversation.messageNodes.isNotEmpty()) {
+                    // 延迟让布局完成
+                    delay(SCROLL_DELAY_MS)
+                    // 检查是否在底部
+                    val visibleItems = state.layoutInfo.visibleItemsInfo
+                    val isBottom = visibleItems.isAtBottom()
+                    android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, isBottom=$isBottom, loading=$loadingState")
+                    if (isBottom) {
+                        // 滚动到最后一个项目（无动画，更流畅）
+                        state.scrollToItem(totalItemsCount - 1)
+                        android.util.Log.d(TAG, "Scrolled to item ${totalItemsCount - 1}")
                     }
+                }
             }
         }
 
