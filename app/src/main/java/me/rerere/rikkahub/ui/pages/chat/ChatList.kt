@@ -100,6 +100,7 @@ import kotlin.uuid.Uuid
 private const val TAG = "ChatList"
 private const val LoadingIndicatorKey = "LoadingIndicator"
 private const val ScrollBottomKey = "ScrollBottomKey"
+private const val SCROLL_DELAY_MS = 50L // Small delay to allow LazyColumn layout to complete before scrolling
 
 @Composable
 fun ChatList(
@@ -203,7 +204,7 @@ private fun SharedTransitionScope.ChatListNormal(
         LaunchedEffect(conversation.messageNodes.size, loadingState) {
             if (loadingState && conversation.messageNodes.isNotEmpty()) {
                 // 延迟一小段时间让布局完成
-                delay(50)
+                delay(SCROLL_DELAY_MS)
                 // 检查是否在底部
                 val visibleItems = state.layoutInfo.visibleItemsInfo
                 if (visibleItems.isAtBottom()) {
