@@ -200,23 +200,6 @@ private fun SharedTransitionScope.ChatListNormal(
         modifier = Modifier
             .fillMaxSize(),
     ) {
-        // 自动滚动到底部 - 当消息变化且正在加载时
-        LaunchedEffect(conversation.messageNodes.size, loadingState) {
-            if (loadingState && conversation.messageNodes.isNotEmpty()) {
-                // 延迟一小段时间让布局完成
-                delay(SCROLL_DELAY_MS)
-                // 检查是否在底部
-                val visibleItems = state.layoutInfo.visibleItemsInfo
-                if (visibleItems.isAtBottom()) {
-                    // 滚动到列表末尾（包括 loading indicator 和 bottom spacer）
-                    val targetIndex = state.layoutInfo.totalItemsCount - 1
-                    if (targetIndex >= 0) {
-                        state.animateScrollToItem(targetIndex)
-                    }
-                }
-            }
-        }
-
         // 判断最近是否滚动
         LaunchedEffect(state.isScrollInProgress) {
             if (state.isScrollInProgress) {
@@ -322,6 +305,25 @@ private fun SharedTransitionScope.ChatListNormal(
                         .fillMaxWidth()
                         .height(5.dp)
                 )
+            }
+        }
+
+        // 自动滚动到底部 - 使用 snapshotFlow 监听布局变化
+        LaunchedEffect(conversation.messageNodes.size) {
+            if (conversation.messageNodes.isNotEmpty()) {
+                snapshotFlow { state.layoutInfo.totalItemsCount }
+                    .collect { totalItemsCount ->
+                        if (totalItemsCount > 0) {
+                            // 延迟让布局完成
+                            delay(SCROLL_DELAY_MS)
+                            // 检查是否在底部
+                            val visibleItems = state.layoutInfo.visibleItemsInfo
+                            if (visibleItems.isAtBottom()) {
+                                // 滚动到最后一个项目
+                                state.animateScrollToItem(totalItemsCount - 1)
+                            }
+                        }
+                    }
             }
         }
 
