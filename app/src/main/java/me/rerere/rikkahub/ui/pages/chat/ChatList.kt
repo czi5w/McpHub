@@ -321,11 +321,16 @@ private fun SharedTransitionScope.ChatListNormal(
                     // 检查是否在底部
                     val visibleItems = state.layoutInfo.visibleItemsInfo
                     val isBottom = visibleItems.isAtBottom()
-                    android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, isBottom=$isBottom, loading=$loadingState")
+                    // Debug logging (can be removed after verification)
+                    if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
+                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, isBottom=$isBottom, loading=$loadingState")
+                    }
                     if (isBottom) {
                         // 滚动到最后一个项目（无动画，更流畅）
                         state.scrollToItem(totalItemsCount - 1)
-                        android.util.Log.d(TAG, "Scrolled to item ${totalItemsCount - 1}")
+                        if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
+                            android.util.Log.d(TAG, "Scrolled to item ${totalItemsCount - 1}")
+                        }
                     }
                 }
             }
