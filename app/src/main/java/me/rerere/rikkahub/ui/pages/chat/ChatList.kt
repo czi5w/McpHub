@@ -182,10 +182,20 @@ private fun SharedTransitionScope.ChatListNormal(
 
     fun List<LazyListItemInfo>.isAtBottom(): Boolean {
         val lastItem = lastOrNull() ?: return false
+        // 如果最后一项是 LoadingIndicator 或 ScrollBottomKey，认为在底部
         if (lastItem.key == LoadingIndicatorKey || lastItem.key == ScrollBottomKey) {
             return true
         }
-        return lastItem.key == conversation.messageNodes.lastOrNull()?.id && (lastItem.offset + lastItem.size <= state.layoutInfo.viewportEndOffset + lastItem.size * 0.15 + 32)
+        // 检查最后一项是否可见，并且距离底部不远（更宽松的判断）
+        val isLastMessageVisible = lastItem.key == conversation.messageNodes.lastOrNull()?.id
+        if (!isLastMessageVisible) return false
+        
+        // 计算最后一项底部位置
+        val lastItemBottom = lastItem.offset + lastItem.size
+        val viewportEnd = state.layoutInfo.viewportEndOffset
+        // 允许一定的误差范围（最后一项的 50% 高度或最多 200px）
+        val threshold = minOf(lastItem.size * 0.5f, 200f)
+        return lastItemBottom <= viewportEnd + threshold
     }
 
     // 聊天选择
@@ -318,14 +328,24 @@ private fun SharedTransitionScope.ChatListNormal(
                 if (totalItemsCount > 0 && conversation.messageNodes.isNotEmpty()) {
                     // 延迟让布局完成
                     delay(SCROLL_DELAY_MS)
-                    // 检查是否在底部
-                    val visibleItems = state.layoutInfo.visibleItemsInfo
-                    val isBottom = visibleItems.isAtBottom()
+                    
+                    // 在 AI 回复期间，持续滚动到底部
+                    // 在非回复期间，只有当已经在底部附近时才滚动（避免干扰用户浏览历史消息）
+                    val shouldScroll = if (loadingState) {
+                        // AI 回复时，始终滚动到底部
+                        true
+                    } else {
+                        // 非回复时，检查是否在底部附近
+                        val visibleItems = state.layoutInfo.visibleItemsInfo
+                        visibleItems.isAtBottom()
+                    }
+                    
                     // Debug logging (can be removed after verification)
                     if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
-                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, isBottom=$isBottom, loading=$loadingState")
+                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, shouldScroll=$shouldScroll, loading=$loadingState")
                     }
-                    if (isBottom) {
+                    
+                    if (shouldScroll) {
                         // 滚动到最后一个项目（无动画，更流畅）
                         state.scrollToItem(totalItemsCount - 1)
                         if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
