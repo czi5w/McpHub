@@ -100,6 +100,8 @@ import kotlin.uuid.Uuid
 private const val TAG = "ChatList"
 private const val LoadingIndicatorKey = "LoadingIndicator"
 private const val ScrollBottomKey = "ScrollBottomKey"
+private const val SCROLL_DELAY_MS = 50L // Small delay to allow LazyColumn layout to complete before scrolling
+private const val MAX_BOTTOM_THRESHOLD_PX = 200f // Maximum pixel threshold for isAtBottom detection
 
 @Composable
 fun ChatList(
@@ -181,10 +183,20 @@ private fun SharedTransitionScope.ChatListNormal(
 
     fun List<LazyListItemInfo>.isAtBottom(): Boolean {
         val lastItem = lastOrNull() ?: return false
+        // 如果最后一项是 LoadingIndicator 或 ScrollBottomKey，认为在底部
         if (lastItem.key == LoadingIndicatorKey || lastItem.key == ScrollBottomKey) {
             return true
         }
-        return lastItem.key == conversation.messageNodes.lastOrNull()?.id && (lastItem.offset + lastItem.size <= state.layoutInfo.viewportEndOffset + lastItem.size * 0.15 + 32)
+        // 检查最后一项是否可见，并且距离底部不远（更宽松的判断）
+        val isLastMessageVisible = lastItem.key == conversation.messageNodes.lastOrNull()?.id
+        if (!isLastMessageVisible) return false
+        
+        // 计算最后一项底部位置
+        val lastItemBottom = lastItem.offset + lastItem.size
+        val viewportEnd = state.layoutInfo.viewportEndOffset
+        // 允许一定的误差范围（最后一项的 50% 高度或最多 200px）
+        val threshold = minOf(lastItem.size * 0.5f, MAX_BOTTOM_THRESHOLD_PX)
+        return lastItemBottom <= viewportEnd + threshold
     }
 
     // 聊天选择
@@ -199,19 +211,6 @@ private fun SharedTransitionScope.ChatListNormal(
         modifier = Modifier
             .fillMaxSize(),
     ) {
-        // 自动滚动到底部
-        LaunchedEffect(state) {
-            snapshotFlow { state.layoutInfo.visibleItemsInfo }.collect { visibleItemsInfo ->
-                // println("is bottom = ${visibleItemsInfo.isAtBottom()}, scroll = ${state.isScrollInProgress}, can_scroll = ${state.canScrollForward}, loading = $loading")
-                if (!state.isScrollInProgress && loadingState) {
-                    if (visibleItemsInfo.isAtBottom()) {
-                        state.requestScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
-                        // Log.i(TAG, "ChatList: scroll to ${conversationUpdated.messageNodes.lastIndex}")
-                    }
-                }
-            }
-        }
-
         // 判断最近是否滚动
         LaunchedEffect(state.isScrollInProgress) {
             if (state.isScrollInProgress) {
@@ -317,6 +316,55 @@ private fun SharedTransitionScope.ChatListNormal(
                         .fillMaxWidth()
                         .height(5.dp)
                 )
+            }
+        }
+
+        // 自动滚动到底部 - 监听 AI 消息变化和加载状态
+        LaunchedEffect(conversation.messageNodes.size, loadingState) {
+            snapshotFlow { 
+                // 找到最后一条 AI 消息的索引和大小
+                val lastAssistantIndex = conversation.messageNodes.indexOfLast { 
+                    it.currentMessage.role == me.rerere.ai.core.MessageRole.ASSISTANT 
+                }
+                val lastAssistantItem = if (lastAssistantIndex >= 0) {
+                    state.layoutInfo.visibleItemsInfo.find { it.index == lastAssistantIndex }
+                } else null
+                
+                // 监听布局信息的变化，重点关注 AI 消息的大小变化
+                Triple(
+                    state.layoutInfo.totalItemsCount,
+                    lastAssistantItem?.size,
+                    lastAssistantIndex
+                )
+            }.collect { (totalItemsCount, lastAssistantSize, lastAssistantIndex) ->
+                if (totalItemsCount > 0 && conversation.messageNodes.isNotEmpty()) {
+                    // 延迟让布局完成
+                    delay(SCROLL_DELAY_MS)
+                    
+                    // 在 AI 回复期间，持续滚动到底部
+                    // 在非回复期间，只有当已经在底部附近时才滚动（避免干扰用户浏览历史消息）
+                    val shouldScroll = if (loadingState) {
+                        // AI 回复时，始终滚动到底部
+                        true
+                    } else {
+                        // 非回复时，检查是否在底部附近
+                        val visibleItems = state.layoutInfo.visibleItemsInfo
+                        visibleItems.isAtBottom()
+                    }
+                    
+                    // Debug logging (can be removed after verification)
+                    if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
+                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastAssistantSize=$lastAssistantSize, lastAssistantIdx=$lastAssistantIndex, shouldScroll=$shouldScroll, loading=$loadingState")
+                    }
+                    
+                    if (shouldScroll) {
+                        // 滚动到最后一个项目（无动画，更流畅）
+                        state.scrollToItem(totalItemsCount - 1)
+                        if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
+                            android.util.Log.d(TAG, "Scrolled to item ${totalItemsCount - 1}")
+                        }
+                    }
+                }
             }
         }
 
