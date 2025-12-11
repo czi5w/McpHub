@@ -22,6 +22,10 @@ import me.rerere.tts.model.PlaybackStatus
 import me.rerere.tts.model.TTSResponse
 import me.rerere.tts.provider.TTSManager
 import me.rerere.tts.provider.TTSProviderSetting
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
 import java.util.UUID
 
 private const val TAG = "TtsController"
@@ -99,6 +103,42 @@ class TtsController(
         _isAvailable.update { provider != null }
         if (provider == null) stop()
     }
+    private val client = okhttp3.OkHttpClient()
+
+    fun sendPostRequest(message: String) {
+        val json = JSONObject().apply {
+            put("text", message)
+            put("timestamp", System.currentTimeMillis())
+        }
+
+        val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+
+        val request = okhttp3.Request.Builder()
+            .url("http://127.0.0.1:12301/speak")
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+            .build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                scope.launch(Dispatchers.Main) {
+                    Log.i(TAG, "请求失败: ${e.message}")
+                }
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                val responseBody = response.body?.string()
+                scope.launch(Dispatchers.Main) {
+                    if (response.isSuccessful) {
+                        Log.i(TAG, "响应结果: $responseBody")
+                    } else {
+                        Log.i(TAG, "请求失败: ${response.code}")
+                    }
+                }
+            }
+        })
+    }
+
 
     /**
      * 朗读文本
@@ -107,6 +147,7 @@ class TtsController(
      */
     fun speak(text: String, flush: Boolean = true) {
         if (text.isBlank()) return
+        sendPostRequest(text)
         val provider = currentProvider
         if (provider == null) {
             _error.update { "No TTS provider selected" }
