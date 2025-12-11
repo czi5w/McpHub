@@ -319,13 +319,24 @@ private fun SharedTransitionScope.ChatListNormal(
             }
         }
 
-        // 自动滚动到底部 - 监听消息变化和加载状态
+        // 自动滚动到底部 - 监听 AI 消息变化和加载状态
         LaunchedEffect(conversation.messageNodes.size, loadingState) {
             snapshotFlow { 
-                // 监听布局信息的变化，包括项目数量和最后一项的高度
-                state.layoutInfo.totalItemsCount to 
-                state.layoutInfo.visibleItemsInfo.lastOrNull()?.size
-            }.collect { (totalItemsCount, lastItemSize) ->
+                // 找到最后一条 AI 消息的索引和大小
+                val lastAssistantIndex = conversation.messageNodes.indexOfLast { 
+                    it.currentMessage.role == me.rerere.ai.core.MessageRole.ASSISTANT 
+                }
+                val lastAssistantItem = if (lastAssistantIndex >= 0) {
+                    state.layoutInfo.visibleItemsInfo.find { it.index == lastAssistantIndex }
+                } else null
+                
+                // 监听布局信息的变化，重点关注 AI 消息的大小变化
+                Triple(
+                    state.layoutInfo.totalItemsCount,
+                    lastAssistantItem?.size,
+                    lastAssistantIndex
+                )
+            }.collect { (totalItemsCount, lastAssistantSize, lastAssistantIndex) ->
                 if (totalItemsCount > 0 && conversation.messageNodes.isNotEmpty()) {
                     // 延迟让布局完成
                     delay(SCROLL_DELAY_MS)
@@ -343,7 +354,7 @@ private fun SharedTransitionScope.ChatListNormal(
                     
                     // Debug logging (can be removed after verification)
                     if (android.util.Log.isLoggable(TAG, android.util.Log.DEBUG)) {
-                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastSize=$lastItemSize, shouldScroll=$shouldScroll, loading=$loadingState")
+                        android.util.Log.d(TAG, "Auto-scroll: totalItems=$totalItemsCount, lastAssistantSize=$lastAssistantSize, lastAssistantIdx=$lastAssistantIndex, shouldScroll=$shouldScroll, loading=$loadingState")
                     }
                     
                     if (shouldScroll) {
