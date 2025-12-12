@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import me.rerere.tts.model.PlaybackState
 import me.rerere.tts.model.PlaybackStatus
 import me.rerere.tts.model.TTSResponse
@@ -114,7 +115,7 @@ class TtsController(
         val requestBody = json.toString().toRequestBody("application/json".toMediaType())
 
         val request = okhttp3.Request.Builder()
-            .url("http://127.0.0.1:12301/speak")
+            .url("http://192.168.0.59:12301/speak")
             .post(requestBody)
             .addHeader("Content-Type", "application/json")
             .build()
@@ -137,6 +138,12 @@ class TtsController(
                 }
             }
         })
+        try {
+            Thread.sleep((message.length * 30).toLong())
+        } catch (e: Exception){
+
+        }
+
     }
 
 
