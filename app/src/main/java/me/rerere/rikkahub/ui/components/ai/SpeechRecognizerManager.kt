@@ -81,7 +81,7 @@ fun VoiceInputButtonWithSpeechService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
-    
+
     // Get TTS state to disable voice input during TTS playback
     val ttsState = LocalTTSState.current
     val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
@@ -99,17 +99,17 @@ fun VoiceInputButtonWithSpeechService(
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
     var wasListeningBeforeAI by remember { mutableStateOf(false) }
-    
+
     // Log state changes for debugging
     LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
         Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
     }
-    
+
     // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
     // and automatically restart when both AI and TTS finish for continuous conversation
     LaunchedEffect(state.loading, isTTSSpeaking) {
         val aiOrTTSActive = state.loading || isTTSSpeaking
-        
+
         if (aiOrTTSActive && isListening) {
             // AI started responding or TTS started while we were listening - stop and remember this
             Log.d("VoiceAutoSend", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
@@ -124,11 +124,11 @@ fun VoiceInputButtonWithSpeechService(
             // Both AI and TTS finished and we should restart voice recognition for continuous conversation
             Log.d("VoiceAutoSend", "AI and TTS finished, automatically restarting voice recognition")
             wasListeningBeforeAI = false
-            
+
             // Check if model is still selected and permission is granted
             val currentModel = settings.getCurrentChatModel()
             val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
-            
+
             if (currentModel != null && hasPermission) {
                 isListening = true
                 try {
@@ -136,7 +136,7 @@ fun VoiceInputButtonWithSpeechService(
                         Log.d("VoiceAutoSend", "Initializing speech service for auto-restart")
                         speechService.initialize()
                     }
-                    
+
                     Log.d("VoiceAutoSend", "Auto-restarting speech recognition for continuous conversation")
                     speechService.startRecognition(
                         languageCode = "zh-CN",
@@ -160,16 +160,16 @@ fun VoiceInputButtonWithSpeechService(
             speechService.recognitionResultFlow.collect { result ->
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
-                
+
                 Log.d("VoiceAutoSend", "Recognition result: text='${result.text}', isFinal=${result.isFinal}")
-                
+
                 // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
-                    
+
                     // Cancel previous timer
                     autoSendJob?.cancel()
-                    
+
                     // Start new 2-second timer (triggers 2 seconds after last update)
                     // Use coroutineScope to ensure timer survives even if collection stops
                     autoSendJob = coroutineScope.launch {
@@ -178,13 +178,13 @@ fun VoiceInputButtonWithSpeechService(
                         // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceAutoSend", "Triggering auto-send, clearing isListening state")
-                            state.shouldTriggerAutoSend = true
+                            state.shouldTriggerAutoSend = false
                         } else {
                             Log.d("VoiceAutoSend", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
-                
+
                 // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceAutoSend", "Final result received")
@@ -200,7 +200,7 @@ fun VoiceInputButtonWithSpeechService(
             }
         }
     }
-    
+
     // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
@@ -216,7 +216,7 @@ fun VoiceInputButtonWithSpeechService(
         hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED,
         onStartListening = {
             Log.d("VoiceAutoSend", "User clicked start button")
-            
+
             // Check if a model is selected before starting voice recognition
             val currentModel = settings.getCurrentChatModel()
             if (currentModel == null) {
@@ -224,7 +224,7 @@ fun VoiceInputButtonWithSpeechService(
                 Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
                 return@VoiceInputButton
             }
-            
+
             isListening = true
             coroutineScope.launch {
                 try {
@@ -240,7 +240,7 @@ fun VoiceInputButtonWithSpeechService(
                         }
                         Log.d("VoiceAutoSend", "Speech service initialized successfully")
                     }
-                    
+
                     Log.d("VoiceAutoSend", "Starting speech recognition with model: ${currentModel.displayName}")
                     speechService.startRecognition(
                         languageCode = "zh-CN",
@@ -287,7 +287,7 @@ fun VoiceInputButtonForService(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val audioPermission = Manifest.permission.RECORD_AUDIO
-    
+
     // Get TTS state to disable voice input during TTS playback
     val ttsState = LocalTTSState.current
     val isTTSSpeaking by ttsState.isSpeaking.collectAsStateWithLifecycle()
@@ -297,23 +297,23 @@ fun VoiceInputButtonForService(
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
     var wasListeningBeforeAI by remember { mutableStateOf(false) }
-    
+
     // Log permission status on composition
     LaunchedEffect(Unit) {
         val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
         Log.d("VoiceInputService", "VoiceInputButtonForService composed, permission granted: $hasPermission")
     }
-    
+
     // Log state changes for debugging
     LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
         Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
     }
-    
+
     // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
     // and automatically restart when both AI and TTS finish for continuous conversation
     LaunchedEffect(state.loading, isTTSSpeaking) {
         val aiOrTTSActive = state.loading || isTTSSpeaking
-        
+
         if (aiOrTTSActive && isListening) {
             // AI started responding or TTS started while we were listening - stop and remember this
             Log.d("VoiceInputService", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
@@ -328,11 +328,11 @@ fun VoiceInputButtonForService(
             // Both AI and TTS finished and we should restart voice recognition for continuous conversation
             Log.d("VoiceInputService", "AI and TTS finished, automatically restarting voice recognition")
             wasListeningBeforeAI = false
-            
+
             // Check if model is still selected and permission is granted
             val currentModel = settings.getCurrentChatModel()
             val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
-            
+
             if (currentModel != null && hasPermission) {
                 isListening = true
                 try {
@@ -340,7 +340,7 @@ fun VoiceInputButtonForService(
                         Log.d("VoiceInputService", "Initializing speech service for auto-restart")
                         speechService.initialize()
                     }
-                    
+
                     Log.d("VoiceInputService", "Auto-restarting speech recognition for continuous conversation")
                     val started = speechService.startRecognition(
                         languageCode = "zh-CN",
@@ -368,14 +368,14 @@ fun VoiceInputButtonForService(
                 Log.d("VoiceInputService", "Received recognition result: text='${result.text}', isFinal=${result.isFinal}")
                 state.textContent.edit { replace(0, length, result.text) }
                 lastVoiceInputText = result.text
-                
+
                 // Update last update time when recognition result (partial or final) with text content is received
                 if (result.text.isNotBlank()) {
                     lastUpdateTime = System.currentTimeMillis()
-                    
+
                     // Cancel previous timer
                     autoSendJob?.cancel()
-                    
+
                     // Start new 2-second timer (triggers 2 seconds after last update)
                     // Use coroutineScope to ensure timer survives even if collection stops
                     autoSendJob = coroutineScope.launch {
@@ -384,13 +384,13 @@ fun VoiceInputButtonForService(
                         // After 2 seconds, if input field has content, trigger auto-send
                         if (!state.isEmpty()) {
                             Log.d("VoiceInputService", "Triggering auto-send")
-                            state.shouldTriggerAutoSend = true
+                            state.shouldTriggerAutoSend = false
                         } else {
                             Log.d("VoiceInputService", "Auto-send NOT triggered: input is empty")
                         }
                     }
                 }
-                
+
                 // Log when final result is received
                 if (result.isFinal && result.text.isNotBlank()) {
                     Log.d("VoiceInputService", "Final result received")
@@ -412,7 +412,7 @@ fun VoiceInputButtonForService(
             }
         }
     }
-    
+
     // Monitor text changes - cancel auto-send timer if user manually edits text
     LaunchedEffect(state.textContent.text.toString()) {
         val currentText = state.textContent.text.toString()
@@ -431,13 +431,13 @@ fun VoiceInputButtonForService(
             Log.d("VoiceInputService", "onStartListening called")
             val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
             Log.d("VoiceInputService", "Permission check before starting: $hasPermission")
-            
+
             if (!hasPermission) {
                 Log.w("VoiceInputService", "Permission not granted, cannot start recognition")
                 Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
                 return@VoiceInputButton
             }
-            
+
             // Check if a model is selected before starting voice recognition
             val currentModel = settings.getCurrentChatModel()
             if (currentModel == null) {
@@ -445,7 +445,7 @@ fun VoiceInputButtonForService(
                 Toast.makeText(context, "请先选择一个模型", Toast.LENGTH_LONG).show()
                 return@VoiceInputButton
             }
-            
+
             isListening = true
             coroutineScope.launch {
                 try {
@@ -461,7 +461,7 @@ fun VoiceInputButtonForService(
                             return@launch
                         }
                     }
-                    
+
                     Log.d("VoiceInputService", "Calling speechService.startRecognition with model: ${currentModel.displayName}")
                     val started = speechService.startRecognition(
                         languageCode = "zh-CN",

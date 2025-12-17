@@ -11,6 +11,11 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+  <queries>
+    <intent>
+      <action android:name="android.speech.tts.engine.TTS_SERVICE" />
+    </intent>
+  </queries>
   <uses-feature
     android:name="android.hardware.camera"
     android:required="false" />

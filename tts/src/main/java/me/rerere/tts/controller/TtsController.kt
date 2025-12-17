@@ -115,7 +115,7 @@ class TtsController(
         val requestBody = json.toString().toRequestBody("application/json".toMediaType())
 
         val request = okhttp3.Request.Builder()
-            .url("http://192.168.0.59:12301/speak")
+            .url("http://172.168.7.101:12301/speak")
             .post(requestBody)
             .addHeader("Content-Type", "application/json")
             .build()
@@ -138,14 +138,34 @@ class TtsController(
                 }
             }
         })
-        try {
-            Thread.sleep((message.length * 30).toLong())
-        } catch (e: Exception){
+//        try {
+////            Thread.sleep((message.length * 200).toLong())
+//            Thread.sleep((message.length * 110).toLong())
+//        } catch (e: Exception){
+//            Log.e(TAG, "tts error!!!---$e")
+//        }
+//        speaking_now = true
+//        val thread = Thread {
+//            Log.e(TAG, "hello, my tts thread")
+//            println("Hello from thread!")
+//            try {
+//                Thread.sleep((message.length * 100).toLong())
+//            } catch (e: Exception){
+//                Log.e(TAG, "tts error!!!---$e")
+//            }
+//            speaking_now = false
+//        }
+//        thread.start()  // 启动线程
 
-        }
-
+//        CoroutineScope(Dispatchers.Main).launch {
+//            delay(message.length * 100L)
+//        }
+//        scope.launch {
+//            runCatching {
+//                delay(message.length * 360L)
+//            }.onFailure { /* 日志或忽略 */ }
+//        }
     }
-
 
     /**
      * 朗读文本
@@ -155,6 +175,7 @@ class TtsController(
     fun speak(text: String, flush: Boolean = true) {
         if (text.isBlank()) return
         sendPostRequest(text)
+        return
         val provider = currentProvider
         if (provider == null) {
             _error.update { "No TTS provider selected" }
