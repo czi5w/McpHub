@@ -98,57 +98,24 @@ fun VoiceInputButtonWithSpeechService(
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
-    var wasListeningBeforeAI by remember { mutableStateOf(false) }
     
     // Log state changes for debugging
     LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
-        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
+        Log.d("VoiceAutoSend", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking")
     }
     
-    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
-    // and automatically restart when both AI and TTS finish for continuous conversation
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts
     LaunchedEffect(state.loading, isTTSSpeaking) {
         val aiOrTTSActive = state.loading || isTTSSpeaking
         
         if (aiOrTTSActive && isListening) {
-            // AI started responding or TTS started while we were listening - stop and remember this
-            Log.d("VoiceAutoSend", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
-            wasListeningBeforeAI = true
+            // AI started responding or TTS started while we were listening - stop voice recognition
+            Log.d("VoiceAutoSend", "AI responding or TTS playing, stopping voice recognition")
             isListening = false
             try {
                 speechService.stopRecognition()
             } catch (e: Exception) {
                 Log.e("VoiceAutoSend", "Error stopping recognition when AI/TTS becomes active", e)
-            }
-        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
-            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
-            Log.d("VoiceAutoSend", "AI and TTS finished, automatically restarting voice recognition")
-            wasListeningBeforeAI = false
-            
-            // Check if model is still selected and permission is granted
-            val currentModel = settings.getCurrentChatModel()
-            val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
-            
-            if (currentModel != null && hasPermission) {
-                isListening = true
-                try {
-                    if (!speechService.isInitialized.value) {
-                        Log.d("VoiceAutoSend", "Initializing speech service for auto-restart")
-                        speechService.initialize()
-                    }
-                    
-                    Log.d("VoiceAutoSend", "Auto-restarting speech recognition for continuous conversation")
-                    speechService.startRecognition(
-                        languageCode = "zh-CN",
-                        continuousMode = true,
-                        partialResults = true
-                    )
-                } catch (e: Exception) {
-                    isListening = false
-                    Log.e("VoiceAutoSend", "Failed to auto-restart voice recognition: ${e.message}", e)
-                }
-            } else {
-                Log.w("VoiceAutoSend", "Cannot auto-restart: model=${currentModel?.displayName}, hasPermission=$hasPermission")
             }
         }
     }
@@ -258,7 +225,6 @@ fun VoiceInputButtonWithSpeechService(
         onStopListening = {
             Log.d("VoiceAutoSend", "User clicked stop button. Current autoSendJob state: ${if (autoSendJob?.isActive == true) "ACTIVE" else "INACTIVE/NULL"}")
             isListening = false
-            wasListeningBeforeAI = false // Clear the flag to prevent auto-restart
             coroutineScope.launch {
                 try {
                     speechService.stopRecognition()
@@ -296,7 +262,6 @@ fun VoiceInputButtonForService(
     var autoSendJob by remember { mutableStateOf<Job?>(null) }
     var lastVoiceInputText by remember { mutableStateOf("") }
     var lastUpdateTime by remember { mutableStateOf(0L) }
-    var wasListeningBeforeAI by remember { mutableStateOf(false) }
     
     // Log permission status on composition
     LaunchedEffect(Unit) {
@@ -306,57 +271,21 @@ fun VoiceInputButtonForService(
     
     // Log state changes for debugging
     LaunchedEffect(isListening, state.loading, isTTSSpeaking) {
-        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking, wasListeningBeforeAI=$wasListeningBeforeAI")
+        Log.d("VoiceInputService", "State changed: isListening=$isListening, state.loading=${state.loading}, isTTSSpeaking=$isTTSSpeaking")
     }
     
-    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts,
-    // and automatically restart when both AI and TTS finish for continuous conversation
+    // Monitor loading state changes AND TTS speaking state - stop voice recognition when AI starts responding or TTS starts
     LaunchedEffect(state.loading, isTTSSpeaking) {
         val aiOrTTSActive = state.loading || isTTSSpeaking
         
         if (aiOrTTSActive && isListening) {
-            // AI started responding or TTS started while we were listening - stop and remember this
-            Log.d("VoiceInputService", "AI responding or TTS playing, stopping voice recognition and marking for auto-restart")
-            wasListeningBeforeAI = true
+            // AI started responding or TTS started while we were listening - stop voice recognition
+            Log.d("VoiceInputService", "AI responding or TTS playing, stopping voice recognition")
             isListening = false
             try {
                 speechService.stopRecognition()
             } catch (e: Exception) {
                 Log.e("VoiceInputService", "Error stopping recognition when AI/TTS becomes active", e)
-            }
-        } else if (!aiOrTTSActive && wasListeningBeforeAI) {
-            // Both AI and TTS finished and we should restart voice recognition for continuous conversation
-            Log.d("VoiceInputService", "AI and TTS finished, automatically restarting voice recognition")
-            wasListeningBeforeAI = false
-            
-            // Check if model is still selected and permission is granted
-            val currentModel = settings.getCurrentChatModel()
-            val hasPermission = ContextCompat.checkSelfPermission(context, audioPermission) == PackageManager.PERMISSION_GRANTED
-            
-            if (currentModel != null && hasPermission) {
-                isListening = true
-                try {
-                    if (!speechService.isInitialized.value) {
-                        Log.d("VoiceInputService", "Initializing speech service for auto-restart")
-                        speechService.initialize()
-                    }
-                    
-                    Log.d("VoiceInputService", "Auto-restarting speech recognition for continuous conversation")
-                    val started = speechService.startRecognition(
-                        languageCode = "zh-CN",
-                        continuousMode = true,
-                        partialResults = true
-                    )
-                    if (!started) {
-                        isListening = false
-                        Log.w("VoiceInputService", "Failed to auto-restart: startRecognition returned false")
-                    }
-                } catch (e: Exception) {
-                    isListening = false
-                    Log.e("VoiceInputService", "Failed to auto-restart voice recognition: ${e.message}", e)
-                }
-            } else {
-                Log.w("VoiceInputService", "Cannot auto-restart: model=${currentModel?.displayName}, hasPermission=$hasPermission")
             }
         }
     }
@@ -483,7 +412,6 @@ fun VoiceInputButtonForService(
         onStopListening = {
             Log.d("VoiceInputService", "onStopListening called")
             isListening = false
-            wasListeningBeforeAI = false // Clear the flag to prevent auto-restart
             coroutineScope.launch {
                 try {
                     Log.d("VoiceInputService", "Calling speechService.stopRecognition")
